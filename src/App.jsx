@@ -11,6 +11,8 @@ function App() {
   const [activeTab, setActiveTab] = useState('map') // 'map' or 'list'
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [selectedCategories, setSelectedCategories] = useState(['Hospital', 'Market', 'Shopping Mall', 'Office'])
+  const [selectedVehicleTypes, setSelectedVehicleTypes] = useState([])
+  const [parkingDuration, setParkingDuration] = useState('')
 
   return (
     <div className="h-screen bg-gray-50 flex flex-col">
@@ -153,6 +155,55 @@ function App() {
               </div>
 
               <div className="mb-4">
+                <h3 className="text-sm font-semibold text-gray-900 mb-2">Vehicle Type</h3>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { key: 'car', label: '🚗 Car' },
+                    { key: 'motorcycle', label: '🏍️ Motorcycle' },
+                    { key: 'bicycle', label: '🚲 Bicycle' },
+                    { key: 'truck', label: '🚛 Truck' },
+                    { key: 'ev', label: '⚡ EV' }
+                  ].map((vehicle) => (
+                    <button
+                      key={vehicle.key}
+                      onClick={() => {
+                        if (selectedVehicleTypes.includes(vehicle.key)) {
+                          setSelectedVehicleTypes(selectedVehicleTypes.filter(v => v !== vehicle.key))
+                        } else {
+                          setSelectedVehicleTypes([...selectedVehicleTypes, vehicle.key])
+                        }
+                      }}
+                      className={`px-3 py-2 rounded-full text-xs font-medium transition-colors min-h-[36px] ${
+                        selectedVehicleTypes.includes(vehicle.key)
+                          ? 'bg-green-500 text-white'
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      }`}
+                    >
+                      {vehicle.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mb-4">
+                <h3 className="text-sm font-semibold text-gray-900 mb-2">Parking Duration (minutes)</h3>
+                <input
+                  type="number"
+                  placeholder="e.g., 45"
+                  value={parkingDuration}
+                  onChange={(e) => setParkingDuration(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-base min-h-[44px]"
+                  min="1"
+                  max="1440"
+                />
+                {parkingDuration && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Show only spots where you can park for {parkingDuration} minutes
+                  </p>
+                )}
+              </div>
+
+              <div className="mb-4">
                 <h2 className="text-lg font-semibold text-gray-900 mb-3">Public Areas Near You</h2>
                 <div className="relative">
                   <input
@@ -171,6 +222,8 @@ function App() {
                 setSelectedArea={setSelectedArea}
                 currentTime={currentTime}
                 selectedCategories={selectedCategories}
+                selectedVehicleTypes={selectedVehicleTypes}
+                parkingDuration={parkingDuration}
                 onAreaSelect={() => setIsMobileMenuOpen(false)}
               />
             </div>
@@ -216,7 +269,7 @@ function App() {
             </div>
           </div>
 
-          {/* Category Filter */}
+          {/* Filters */}
           <div className="px-4 pb-4">
             <div className="mb-4">
               <h3 className="text-sm font-semibold text-gray-900 mb-2">Filter by Category</h3>
@@ -244,6 +297,55 @@ function App() {
             </div>
 
             <div className="mb-4">
+              <h3 className="text-sm font-semibold text-gray-900 mb-2">Vehicle Type</h3>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { key: 'car', label: '🚗 Car' },
+                  { key: 'motorcycle', label: '🏍️ Motorcycle' },
+                  { key: 'bicycle', label: '🚲 Bicycle' },
+                  { key: 'truck', label: '🚛 Truck' },
+                  { key: 'ev', label: '⚡ EV' }
+                ].map((vehicle) => (
+                  <button
+                    key={vehicle.key}
+                    onClick={() => {
+                      if (selectedVehicleTypes.includes(vehicle.key)) {
+                        setSelectedVehicleTypes(selectedVehicleTypes.filter(v => v !== vehicle.key))
+                      } else {
+                        setSelectedVehicleTypes([...selectedVehicleTypes, vehicle.key])
+                      }
+                    }}
+                    className={`px-3 py-2 rounded-full text-xs font-medium transition-colors ${
+                      selectedVehicleTypes.includes(vehicle.key)
+                        ? 'bg-green-500 text-white'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                  >
+                    {vehicle.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="mb-4">
+              <h3 className="text-sm font-semibold text-gray-900 mb-2">Parking Duration (minutes)</h3>
+              <input
+                type="number"
+                placeholder="e.g., 45"
+                value={parkingDuration}
+                onChange={(e) => setParkingDuration(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                min="1"
+                max="1440"
+              />
+              {parkingDuration && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Show only spots where you can park for {parkingDuration} minutes
+                </p>
+              )}
+            </div>
+
+            <div className="mb-4">
               <h2 className="text-xl font-semibold text-gray-900 mb-3">Public Areas Near You</h2>
               <div className="relative">
                 <input
@@ -262,6 +364,8 @@ function App() {
               setSelectedArea={setSelectedArea}
               currentTime={currentTime}
               selectedCategories={selectedCategories}
+              selectedVehicleTypes={selectedVehicleTypes}
+              parkingDuration={parkingDuration}
             />
           </div>
         </div>
@@ -274,6 +378,8 @@ function App() {
               setSelectedArea={setSelectedArea}
               currentTime={currentTime}
               selectedCategories={selectedCategories}
+              selectedVehicleTypes={selectedVehicleTypes}
+              parkingDuration={parkingDuration}
             />
           ) : (
             <div className="w-full h-full bg-gray-50 p-4 sm:p-6 lg:p-8 overflow-y-auto">
@@ -284,6 +390,8 @@ function App() {
                   setSelectedArea={setSelectedArea}
                   currentTime={currentTime}
                   selectedCategories={selectedCategories}
+                  selectedVehicleTypes={selectedVehicleTypes}
+                  parkingDuration={parkingDuration}
                   fullWidth={true}
                 />
               </div>
