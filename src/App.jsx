@@ -10,6 +10,7 @@ function App() {
   const [isLiveMode, setIsLiveMode] = useState(false) // Default to SIMULATE mode
   const [activeTab, setActiveTab] = useState('map') // 'map' or 'list'
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [selectedCategories, setSelectedCategories] = useState(['Hospital', 'Market', 'Shopping Mall', 'Office'])
 
   return (
     <div className="h-screen bg-gray-50 flex flex-col">
@@ -124,7 +125,33 @@ function App() {
               </div>
             </div>
 
+            {/* Category Filter */}
             <div className="px-4 pb-4">
+              <div className="mb-4">
+                <h3 className="text-sm font-semibold text-gray-900 mb-2">Filter by Category</h3>
+                <div className="flex flex-wrap gap-2">
+                  {['Hospital', 'Market', 'Shopping Mall', 'Office'].map((category) => (
+                    <button
+                      key={category}
+                      onClick={() => {
+                        if (selectedCategories.includes(category)) {
+                          setSelectedCategories(selectedCategories.filter(c => c !== category))
+                        } else {
+                          setSelectedCategories([...selectedCategories, category])
+                        }
+                      }}
+                      className={`px-3 py-2 rounded-full text-xs font-medium transition-colors min-h-[36px] ${
+                        selectedCategories.includes(category)
+                          ? 'bg-blue-500 text-white'
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      }`}
+                    >
+                      {category}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div className="mb-4">
                 <h2 className="text-lg font-semibold text-gray-900 mb-3">Public Areas Near You</h2>
                 <div className="relative">
@@ -143,6 +170,7 @@ function App() {
                 selectedArea={selectedArea}
                 setSelectedArea={setSelectedArea}
                 currentTime={currentTime}
+                selectedCategories={selectedCategories}
                 onAreaSelect={() => setIsMobileMenuOpen(false)}
               />
             </div>
@@ -188,7 +216,33 @@ function App() {
             </div>
           </div>
 
+          {/* Category Filter */}
           <div className="px-4 pb-4">
+            <div className="mb-4">
+              <h3 className="text-sm font-semibold text-gray-900 mb-2">Filter by Category</h3>
+              <div className="flex flex-wrap gap-2">
+                {['Hospital', 'Market', 'Shopping Mall', 'Office'].map((category) => (
+                  <button
+                    key={category}
+                    onClick={() => {
+                      if (selectedCategories.includes(category)) {
+                        setSelectedCategories(selectedCategories.filter(c => c !== category))
+                      } else {
+                        setSelectedCategories([...selectedCategories, category])
+                      }
+                    }}
+                    className={`px-3 py-2 rounded-full text-xs font-medium transition-colors ${
+                      selectedCategories.includes(category)
+                        ? 'bg-blue-500 text-white'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                  >
+                    {category}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className="mb-4">
               <h2 className="text-xl font-semibold text-gray-900 mb-3">Public Areas Near You</h2>
               <div className="relative">
@@ -207,6 +261,7 @@ function App() {
               selectedArea={selectedArea}
               setSelectedArea={setSelectedArea}
               currentTime={currentTime}
+              selectedCategories={selectedCategories}
             />
           </div>
         </div>
@@ -218,6 +273,7 @@ function App() {
               selectedArea={selectedArea}
               setSelectedArea={setSelectedArea}
               currentTime={currentTime}
+              selectedCategories={selectedCategories}
             />
           ) : (
             <div className="w-full h-full bg-gray-50 p-4 sm:p-6 lg:p-8 overflow-y-auto">
@@ -227,6 +283,7 @@ function App() {
                   selectedArea={selectedArea}
                   setSelectedArea={setSelectedArea}
                   currentTime={currentTime}
+                  selectedCategories={selectedCategories}
                   fullWidth={true}
                 />
               </div>

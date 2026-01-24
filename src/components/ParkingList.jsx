@@ -206,7 +206,7 @@ const staticParkingData = [
   }
 ]
 
-const ParkingList = ({ selectedArea, setSelectedArea, currentTime, fullWidth = false, onAreaSelect }) => {
+const ParkingList = ({ selectedArea, setSelectedArea, currentTime, fullWidth = false, onAreaSelect, selectedCategories = [] }) => {
   const [detailModal, setDetailModal] = useState(null)
 
   const handleCardClick = (parkingArea) => {
@@ -284,10 +284,15 @@ const ParkingList = ({ selectedArea, setSelectedArea, currentTime, fullWidth = f
     }
   }
 
+  // Filter parking data based on selected categories
+  const filteredData = selectedCategories.length > 0
+    ? staticParkingData.filter(area => selectedCategories.includes(area.category))
+    : staticParkingData
+
   return (
     <>
       <div className={fullWidth ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6' : 'space-y-3'}>
-        {staticParkingData.map((area) => (
+        {filteredData.map((area) => (
           <div
             key={area.id}
             onClick={() => handleCardClick(area)}
