@@ -5,6 +5,7 @@ const staticParkingData = [
     id: 1,
     name: 'Diamond Hospital Varachha',
     category: 'Hospital',
+    parkingType: 'free',
     vehicleTypes: ['car', 'motorcycle'],
     capacity: { car: 25, motorcycle: 15, total: 40 },
     distance: 1.7,
@@ -80,6 +81,7 @@ const staticParkingData = [
     id: 2,
     name: 'Surat Railway Station Market',
     category: 'Market',
+    parkingType: 'street',
     vehicleTypes: ['motorcycle', 'bicycle'],
     capacity: { motorcycle: 50, bicycle: 30, total: 80 },
     distance: 2.9,
@@ -155,6 +157,7 @@ const staticParkingData = [
     id: 3,
     name: 'City Center Mall',
     category: 'Shopping Mall',
+    parkingType: 'paid',
     vehicleTypes: ['car', 'motorcycle', 'truck'],
     capacity: { car: 150, motorcycle: 75, truck: 10, total: 235 },
     distance: 3.2,
@@ -162,6 +165,10 @@ const staticParkingData = [
     status: 'limited',
     operatingHours: '10:00 - 23:00',
     maxDuration: 480, // 8 hours
+    reports: {
+      count: 13,
+      lastUpdated: Date.now() - 25 * 60 * 1000 // 25 minutes ago
+    },
     dayWiseAvailability: {
       sunday: {
         status: 'parked',
@@ -230,6 +237,7 @@ const staticParkingData = [
     id: 4,
     name: 'VR Mall',
     category: 'Shopping Mall',
+    parkingType: 'covered',
     vehicleTypes: ['car', 'motorcycle', 'ev'],
     capacity: { car: 200, motorcycle: 100, ev: 20, total: 320 },
     distance: 4.1,
@@ -305,6 +313,7 @@ const staticParkingData = [
     id: 5,
     name: 'Government Office Complex',
     category: 'Office',
+    parkingType: 'free',
     vehicleTypes: ['car', 'motorcycle'],
     capacity: { car: 40, motorcycle: 25, total: 65 },
     distance: 2.3,
@@ -373,13 +382,22 @@ const staticParkingData = [
     rules: [
       'Visitor pass required',
       'No overnight parking'
-    ],
-    coordinates: [21.1854, 72.8222]
+    ]
   }
-]
+  ]
 
-const ParkingList = ({ selectedArea, setSelectedArea, currentTime, fullWidth = false, onAreaSelect, selectedCategories = [], selectedVehicleTypes = [], parkingDuration = null }) => {
+  const ParkingList = ({ selectedArea, setSelectedArea, currentTime, fullWidth = false }) => {
   const [availabilityModal, setAvailabilityModal] = useState(null)
+  const [reportModal, setReportModal] = useState(null)
+  const [reportReason, setReportReason] = useState('')
+  const [reportTime, setReportTime] = useState(new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }))
+  const [reportDuration, setReportDuration] = useState('')
+  
+  // Filter states
+  const [selectedCategories, setSelectedCategories] = useState([])
+  const [selectedVehicleTypes, setSelectedVehicleTypes] = useState([])
+  const [selectedParkingTypes, setSelectedParkingTypes] = useState([])
+  const [parkingDuration, setParkingDuration] = useState('')
 
   const handleCardClick = (parkingArea) => {
     if (fullWidth) {
@@ -402,6 +420,51 @@ const ParkingList = ({ selectedArea, setSelectedArea, currentTime, fullWidth = f
   const closeAvailabilityModal = () => {
     setAvailabilityModal(null)
   }
+
+  const handleShowRoute = () => {
+    if (availabilityModal) {
+      setSelectedArea(availabilityModal)
+      setAvailabilityModal(null)
+    }
+  }
+
+  const openReportModal = (parkingArea) => {
+    setReportModal(parkingArea)
+    setReportReason('')
+    setReportTime(new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }))
+    setReportDuration('')
+  }
+
+  const closeReportModal = () => {
+    setReportModal(null)
+    setReportReason('')
+    setReportTime('')
+    setReportDuration('')
+  }
+
+  const handleSubmitReport = () => {
+    if (reportModal && reportReason.trim()) {
+      const report = {
+        parkingArea: reportModal.name,
+        reason: reportReason,
+        time: reportTime,
+        duration: reportDuration,
+        timestamp: new Date().toLocaleString(),
+        reportedBy: 'Anonymous User'
+      }
+      
+      console.log('Parking Full Report Submitted:', report)
+      
+      // Here you would normally send this to your backend
+      // For now, we'll just log it and close the modal
+      
+      closeReportModal()
+      
+      // Show success message (you could add a toast notification here)
+      alert('Report submitted successfully! Thank you for helping the community.')
+    }
+  }
+
   const getStatusColor = (status) => {
     switch (status) {
       case 'available':
@@ -453,7 +516,7 @@ const ParkingList = ({ selectedArea, setSelectedArea, currentTime, fullWidth = f
     }
   }
 
-  // Filter parking data based on selected categories, vehicle types, and duration
+  // Filter parking data based on selected categories, vehicle types, parking types, and duration
   const filteredData = staticParkingData.filter(area => {
     // Category filter
     if (selectedCategories.length > 0 && !selectedCategories.includes(area.category)) {
@@ -462,6 +525,11 @@ const ParkingList = ({ selectedArea, setSelectedArea, currentTime, fullWidth = f
 
     // Vehicle type filter
     if (selectedVehicleTypes.length > 0 && (!area.vehicleTypes || !selectedVehicleTypes.some(type => area.vehicleTypes.includes(type)))) {
+      return false
+    }
+
+    // Parking type filter
+    if (selectedParkingTypes.length > 0 && !selectedParkingTypes.includes(area.parkingType)) {
       return false
     }
 
@@ -546,29 +614,163 @@ const ParkingList = ({ selectedArea, setSelectedArea, currentTime, fullWidth = f
               )}
             </div>
 
-            {/* View Details Button */}
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                openDetailsModal(area);
-              }}
-              className="w-full mt-3 px-3 py-2 bg-blue-500 text-white text-sm font-medium rounded-lg hover:bg-blue-600 transition-colors min-h-[40px] flex items-center justify-center gap-2"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-              View Availability Details
-            </button>
+            {/* Report Full Button */}
+            {area.reports && area.reports.count > 0 && (
+              <div className="mt-3 p-2 bg-red-50 border border-red-200 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-red-700 font-medium">
+                    🚨 {area.reports.count} users reported parking is full
+                  </span>
+                  <span className="text-xs text-red-500">
+                    {Math.floor((Date.now() - area.reports.lastUpdated) / 60000)}m ago
+                  </span>
+                </div>
+              </div>
+            )}
+
+            <div className="flex gap-2 mt-3">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openReportModal(area);
+                }}
+                className="flex-1 px-2 py-2 bg-red-500 text-white text-xs font-medium rounded-lg hover:bg-red-600 transition-colors min-h-[36px] flex items-center justify-center gap-1"
+              >
+                <span className="text-sm">🚨</span>
+                Report Full
+              </button>
+
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openDetailsModal(area);
+                }}
+                className="flex-1 px-2 py-2 bg-blue-500 text-white text-xs font-medium rounded-lg hover:bg-blue-600 transition-colors min-h-[36px] flex items-center justify-center gap-1"
+              >
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                Details
+              </button>
+            </div>
           </div>
         ))}
       </div>
 
       {/* Availability Details Modal */}
       {availabilityModal && (
-        <AvailabilityDetailModal
-          parkingArea={availabilityModal}
-          onClose={closeAvailabilityModal}
-        />
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] p-4">
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto mx-4">
+            <AvailabilityDetailModal
+              parkingArea={availabilityModal}
+              onClose={closeAvailabilityModal}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Report Full Modal */}
+      {reportModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] p-4">
+          <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto mx-4">
+            <div className="p-4 lg:p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg lg:text-xl font-bold text-gray-900">Report Parking Full</h2>
+                <button
+                  onClick={closeReportModal}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <svg className="w-5 h-5 lg:w-6 lg:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="mb-4">
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl">🚨</span>
+                    <div>
+                      <h3 className="font-semibold text-red-800">{reportModal.name}</h3>
+                      <p className="text-sm text-red-600">Report this parking area as full</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Report Reason *
+                    </label>
+                    <textarea
+                      value={reportReason}
+                      onChange={(e) => setReportReason(e.target.value)}
+                      placeholder="Describe why you're reporting this parking as full..."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 resize-none"
+                      rows="3"
+                      required
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Time Observed
+                      </label>
+                      <input
+                        type="time"
+                        value={reportTime}
+                        onChange={(e) => setReportTime(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Duration (optional)
+                      </label>
+                      <input
+                        type="text"
+                        value={reportDuration}
+                        onChange={(e) => setReportDuration(e.target.value)}
+                        placeholder="e.g., 30 min, 1 hour"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <div className="flex items-start gap-2">
+                      <svg className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <div className="text-sm text-blue-800">
+                        <p className="font-medium mb-1">Why report?</p>
+                        <p>Your reports help other users avoid full parking areas and save time. Reports are shared with the community in real-time.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                  onClick={handleSubmitReport}
+                  disabled={!reportReason.trim()}
+                  className="flex-1 bg-red-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-red-600 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+                >
+                  Submit Report
+                </button>
+                <button
+                  onClick={closeReportModal}
+                  className="flex-1 bg-gray-200 text-gray-800 px-4 py-2 rounded-lg font-medium hover:bg-gray-300 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </>
   )

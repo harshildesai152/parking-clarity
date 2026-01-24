@@ -13,6 +13,11 @@ function App() {
   const [selectedCategories, setSelectedCategories] = useState(['Hospital', 'Market', 'Shopping Mall', 'Office'])
   const [selectedVehicleTypes, setSelectedVehicleTypes] = useState([])
   const [parkingDuration, setParkingDuration] = useState('')
+  const [selectedParkingTypes, setSelectedParkingTypes] = useState([])
+  const [searchRadius, setSearchRadius] = useState(1000) // Default 1km
+  const [searchLocation, setSearchLocation] = useState('')
+  const [userLocation, setUserLocation] = useState(null)
+  const [showAddParkingModal, setShowAddParkingModal] = useState(false)
 
   return (
     <div className="h-screen bg-gray-50 flex flex-col">
@@ -33,6 +38,55 @@ function App() {
               )}
             </svg>
           </button>
+        </div>
+
+        {/* Location Search & Radius */}
+        <div className="space-y-3 mb-3">
+          <div className="flex gap-2">
+            <div className="flex-1 relative">
+              <input
+                type="text"
+                placeholder="Enter location..."
+                value={searchLocation}
+                onChange={(e) => setSearchLocation(e.target.value)}
+                className="w-full px-3 py-2 pl-9 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <svg className="absolute left-2.5 top-2.5 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </div>
+            <button
+              onClick={() => {
+                if (navigator.geolocation) {
+                  navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                      setUserLocation([position.coords.latitude, position.coords.longitude])
+                      setSearchLocation('Current Location')
+                    },
+                    (error) => console.error('Location error:', error)
+                  )
+                }
+              }}
+              className="px-3 py-2 bg-blue-500 text-white text-sm rounded-lg hover:bg-blue-600 transition-colors"
+            >
+              📍
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-600">Radius:</span>
+            <select
+              value={searchRadius}
+              onChange={(e) => setSearchRadius(Number(e.target.value))}
+              className="px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value={500}>500m</option>
+              <option value={1000}>1km</option>
+              <option value={2000}>2km</option>
+              <option value={5000}>5km</option>
+            </select>
+          </div>
         </div>
 
         {/* Mobile Tab Navigation */}
@@ -186,6 +240,37 @@ function App() {
               </div>
 
               <div className="mb-4">
+                <h3 className="text-sm font-semibold text-gray-900 mb-2">Parking Type</h3>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { key: 'free', label: '🆓 Free' },
+                    { key: 'paid', label: '💰 Paid' },
+                    { key: 'street', label: '🅿️ Street' },
+                    { key: 'covered', label: '🏢 Covered' },
+                    { key: 'valet', label: '🚗 Valet' }
+                  ].map((type) => (
+                    <button
+                      key={type.key}
+                      onClick={() => {
+                        if (selectedParkingTypes.includes(type.key)) {
+                          setSelectedParkingTypes(selectedParkingTypes.filter(t => t !== type.key))
+                        } else {
+                          setSelectedParkingTypes([...selectedParkingTypes, type.key])
+                        }
+                      }}
+                      className={`px-3 py-2 rounded-full text-xs font-medium transition-colors min-h-[36px] ${
+                        selectedParkingTypes.includes(type.key)
+                          ? 'bg-purple-500 text-white'
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      }`}
+                    >
+                      {type.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mb-4">
                 <h3 className="text-sm font-semibold text-gray-900 mb-2">Parking Duration (minutes)</h3>
                 <input
                   type="number"
@@ -223,6 +308,7 @@ function App() {
                 currentTime={currentTime}
                 selectedCategories={selectedCategories}
                 selectedVehicleTypes={selectedVehicleTypes}
+                selectedParkingTypes={selectedParkingTypes}
                 parkingDuration={parkingDuration}
                 onAreaSelect={() => setIsMobileMenuOpen(false)}
               />
@@ -231,18 +317,172 @@ function App() {
         </div>
       )}
 
+      {/* Add Parking Spot Modal */}
+      {showAddParkingModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-[2000] p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <div className="bg-gradient-to-r from-green-600 to-green-700 text-white p-6">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold">Add Parking Spot</h2>
+                  <p className="text-green-100 mt-1">Help others find parking!</p>
+                  <p className="text-xs text-green-200 mt-2">
+                    📝 Your submission will be reviewed by the community before being added.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowAddParkingModal(false)}
+                  className="text-green-200 hover:text-white transition-colors p-1"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <form className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Spot Name *</label>
+                <input
+                  type="text"
+                  placeholder="e.g., Mall Parking Lot A"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Category *</label>
+                <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent" required>
+                  <option value="">Select Category</option>
+                  <option value="hospital">🏥 Hospital</option>
+                  <option value="market">🛒 Market</option>
+                  <option value="shopping-mall">🏬 Shopping Mall</option>
+                  <option value="office">🏢 Office</option>
+                  <option value="restaurant">🍽️ Restaurant</option>
+                  <option value="other">📍 Other</option>
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Latitude *</label>
+                  <input
+                    type="number"
+                    step="0.000001"
+                    placeholder="21.123456"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Longitude *</label>
+                  <input
+                    type="number"
+                    step="0.000001"
+                    placeholder="72.123456"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Parking Type *</label>
+                <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent" required>
+                  <option value="">Select Type</option>
+                  <option value="free">🆓 Free Parking</option>
+                  <option value="paid">💰 Paid Parking</option>
+                  <option value="street">🅿️ Street Parking</option>
+                  <option value="covered">🏢 Covered Parking</option>
+                  <option value="valet">🚗 Valet Parking</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                <textarea
+                  rows={3}
+                  placeholder="Describe the parking spot..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
+                />
+              </div>
+
+              {/* Vehicle capacity inputs */}
+              <div className="space-y-3">
+                <h4 className="font-medium text-gray-900">Capacity by Vehicle Type</h4>
+                <div className="grid grid-cols-1 gap-3">
+                  {[
+                    { key: 'car', label: '🚗 Cars', defaultValue: 50 },
+                    { key: 'motorcycle', label: '🏍️ Motorcycles', defaultValue: 25 },
+                    { key: 'bicycle', label: '🚲 Bicycles', defaultValue: 10 },
+                    { key: 'truck', label: '🚛 Trucks', defaultValue: 5 },
+                    { key: 'ev', label: '⚡ Electric Vehicles', defaultValue: 5 }
+                  ].map(vehicle => (
+                    <div key={vehicle.key} className="flex items-center gap-3">
+                      <span className="w-32 text-sm font-medium text-gray-700">{vehicle.label}</span>
+                      <input
+                        type="number"
+                        min="0"
+                        defaultValue={vehicle.defaultValue}
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                        placeholder="0"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Operating Hours</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <input
+                    type="time"
+                    className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  />
+                  <input
+                    type="time"
+                    className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="submit"
+                  className="flex-1 bg-green-600 text-white py-3 rounded-lg font-medium hover:bg-green-700 transition-colors shadow-sm flex items-center justify-center gap-2"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                  </svg>
+                  Submit for Review
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowAddParkingModal(false)}
+                  className="flex-1 bg-gray-200 text-gray-800 py-3 rounded-lg font-medium hover:bg-gray-300 transition-colors shadow-sm"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-1 overflow-hidden">
         {/* Desktop Sidebar */}
         <div className="hidden lg:flex lg:w-96 lg:bg-white lg:border-r lg:border-gray-200 lg:overflow-y-auto lg:flex-col">
           <div className="p-4">
-            <ClarityTime
+            <ClarityTime 
               currentTime={currentTime}
               setCurrentTime={setCurrentTime}
               isLiveMode={isLiveMode}
               setIsLiveMode={setIsLiveMode}
             />
           </div>
-
+          
           {/* Tab Navigation */}
           <div className="px-4 pb-4">
             <div className="flex bg-gray-100 rounded-lg p-1">
@@ -268,9 +508,59 @@ function App() {
               </button>
             </div>
           </div>
-
+          
           {/* Filters */}
           <div className="px-4 pb-4">
+            {/* Location Search & Radius */}
+            <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+              {/* <h3 className="text-sm font-semibold text-gray-900 mb-3">Location & Radius</h3> */}
+              <div className="space-y-3">
+                <div className="relative">
+                  {/* <input
+                    type="text"
+                    placeholder="Enter location..."
+                    value={searchLocation}
+                    onChange={(e) => setSearchLocation(e.target.value)}
+                    className="w-full px-3 py-2 pl-9 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  /> */}
+                  {/* <svg className="absolute left-2.5 top-2.5 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg> */}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-600">Radius:</span>
+                  <select
+                    value={searchRadius}
+                    onChange={(e) => setSearchRadius(Number(e.target.value))}
+                    className="px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value={500}>500m</option>
+                    <option value={1000}>1km</option>
+                    <option value={2000}>2km</option>
+                    <option value={5000}>5km</option>
+                  </select>
+                  <button
+                    onClick={() => {
+                      if (navigator.geolocation) {
+                        navigator.geolocation.getCurrentPosition(
+                          (position) => {
+                            setUserLocation([position.coords.latitude, position.coords.longitude])
+                            setSearchLocation('Current Location')
+                          },
+                          (error) => console.error('Location error:', error)
+                        )
+                      }
+                    }}
+                    className="px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 transition-colors"
+                  >
+                    📍 Current
+                  </button>
+                </div>
+              </div>
+            </div>
+
             <div className="mb-4">
               <h3 className="text-sm font-semibold text-gray-900 mb-2">Filter by Category</h3>
               <div className="flex flex-wrap gap-2">
@@ -328,6 +618,37 @@ function App() {
             </div>
 
             <div className="mb-4">
+              <h3 className="text-sm font-semibold text-gray-900 mb-2">Parking Type</h3>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { key: 'free', label: '🆓 Free' },
+                  { key: 'paid', label: '💰 Paid' },
+                  { key: 'street', label: '🅿️ Street' },
+                  { key: 'covered', label: '🏢 Covered' },
+                  { key: 'valet', label: '🚗 Valet' }
+                ].map((type) => (
+                  <button
+                    key={type.key}
+                    onClick={() => {
+                      if (selectedParkingTypes.includes(type.key)) {
+                        setSelectedParkingTypes(selectedParkingTypes.filter(t => t !== type.key))
+                      } else {
+                        setSelectedParkingTypes([...selectedParkingTypes, type.key])
+                      }
+                    }}
+                    className={`px-3 py-2 rounded-full text-xs font-medium transition-colors ${
+                      selectedParkingTypes.includes(type.key)
+                        ? 'bg-purple-500 text-white'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                  >
+                    {type.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="mb-4">
               <h3 className="text-sm font-semibold text-gray-900 mb-2">Parking Duration (minutes)</h3>
               <input
                 type="number"
@@ -358,45 +679,59 @@ function App() {
                 </svg>
               </div>
             </div>
-
-            <ParkingList
+            
+            <ParkingList 
               selectedArea={selectedArea}
               setSelectedArea={setSelectedArea}
               currentTime={currentTime}
               selectedCategories={selectedCategories}
               selectedVehicleTypes={selectedVehicleTypes}
+              selectedParkingTypes={selectedParkingTypes}
               parkingDuration={parkingDuration}
             />
           </div>
         </div>
 
         {/* Main Content Area */}
-        <div className="flex-1 min-w-0 overflow-hidden">
+        <div className="flex-1 min-w-0 overflow-hidden relative">
           {activeTab === 'map' ? (
-            <MapView
+            <MapView 
               selectedArea={selectedArea}
               setSelectedArea={setSelectedArea}
               currentTime={currentTime}
               selectedCategories={selectedCategories}
               selectedVehicleTypes={selectedVehicleTypes}
+              selectedParkingTypes={selectedParkingTypes}
               parkingDuration={parkingDuration}
             />
           ) : (
             <div className="w-full h-full bg-gray-50 p-4 sm:p-6 lg:p-8 overflow-y-auto">
               <div className="max-w-7xl mx-auto">
                 <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 sm:mb-6">Parking Areas List</h2>
-                <ParkingList
+                <ParkingList 
                   selectedArea={selectedArea}
                   setSelectedArea={setSelectedArea}
                   currentTime={currentTime}
                   selectedCategories={selectedCategories}
                   selectedVehicleTypes={selectedVehicleTypes}
+                  selectedParkingTypes={selectedParkingTypes}
                   parkingDuration={parkingDuration}
                   fullWidth={true}
                 />
               </div>
             </div>
           )}
+
+          {/* Floating Action Button - Add Parking Spot */}
+          <button
+            onClick={() => setShowAddParkingModal(true)}
+            className="fixed bottom-6 right-6 bg-green-600 hover:bg-green-700 text-white rounded-full p-4 shadow-lg transition-all duration-200 hover:scale-110 z-40"
+            aria-label="Add Parking Spot"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+          </button>
         </div>
       </div>
     </div>
