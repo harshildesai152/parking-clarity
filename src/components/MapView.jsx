@@ -142,7 +142,7 @@ const MapController = ({ selectedArea, route }) => {
   return null
 }
 
-const MapView = ({ selectedArea, currentTime, setSelectedArea, selectedCategories = [], selectedVehicleTypes = [], parkingDuration = null }) => {
+const MapView = ({ selectedArea, currentTime, setSelectedArea, selectedCategories = [], selectedVehicleTypes = [], selectedParkingTypes = [], parkingDuration = null }) => {
   const [userLocation, setUserLocation] = useState([21.2000, 72.8400]) // Default: Surat city center
   const [isClient, setIsClient] = useState(false)
   const [route, setRoute] = useState(null)
@@ -364,6 +364,11 @@ const MapView = ({ selectedArea, currentTime, setSelectedArea, selectedCategorie
 
             // Vehicle type filter
             if (selectedVehicleTypes.length > 0 && (!area.vehicleTypes || !selectedVehicleTypes.some(type => area.vehicleTypes.includes(type)))) {
+              return false
+            }
+
+            // Parking type filter
+            if (selectedParkingTypes.length > 0 && !selectedParkingTypes.includes(area.parkingType)) {
               return false
             }
 
