@@ -89,18 +89,37 @@ const MapController = ({ selectedArea, route }) => {
   const map = useMap()
 
   useEffect(() => {
-    if (selectedArea) {
+    if (selectedArea && !route) {
       // Precision zoom to selected parking location
-      map.flyTo(selectedArea.coordinates, 18, {
+      map.flyTo(selectedArea.coordinates, 17, {
         duration: 1.5,
         easeLinearity: 0.5
       })
     } else if (route && route.length > 0) {
-      // Fit bounds to show the entire route with maxZoom constraint
+      // Show route with better zoom level - center on route but don't zoom out too much
       const bounds = L.latLngBounds(route)
-      map.fitBounds(bounds, { 
-        maxZoom: 16,
-        padding: [50, 50]
+
+      // Calculate distance between start and end points
+      const startPoint = route[0]
+      const endPoint = route[route.length - 1]
+      const distance = map.distance(startPoint, endPoint)
+
+      // Adjust zoom based on route distance
+      let zoomLevel = 15 // Default zoom
+      if (distance < 1000) { // Less than 1km
+        zoomLevel = 16
+      } else if (distance < 5000) { // Less than 5km
+        zoomLevel = 14
+      } else if (distance < 10000) { // Less than 10km
+        zoomLevel = 13
+      } else {
+        zoomLevel = 12
+      }
+
+      // Center the map on the route bounds center with appropriate zoom
+      map.fitBounds(bounds, {
+        maxZoom: zoomLevel,
+        padding: [30, 30]
       })
     }
   }, [selectedArea, route, map])
@@ -108,7 +127,7 @@ const MapController = ({ selectedArea, route }) => {
   return null
 }
 
-const MapView = ({ selectedArea, currentTime, setSelectedArea }) => {
+const MapView = ({ selectedArea, currentTime, setSelectedArea, selectedCategories = [] }) => {
   const [userLocation, setUserLocation] = useState([21.2000, 72.8400]) // Default: Surat city center
   const [isClient, setIsClient] = useState(false)
   const [route, setRoute] = useState(null)
@@ -321,7 +340,9 @@ const MapView = ({ selectedArea, currentTime, setSelectedArea }) => {
         )}
 
         {/* Parking Locations */}
-        {staticParkingData.map((area) => (
+        {staticParkingData
+          .filter(area => selectedCategories.length === 0 || selectedCategories.includes(area.category))
+          .map((area) => (
           <Marker
             key={area.id}
             position={area.coordinates}
