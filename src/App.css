@@ -1,15 +1,52 @@
+/* Root styles - Mobile-first responsive */
 #root {
   width: 100%;
-  height: 100vh;
+  min-height: 100vh;
   margin: 0;
   padding: 0;
+  overflow-x: hidden; /* Prevent horizontal scrolling */
 }
 
+/* Mobile-first responsive utilities */
+@media (max-width: 767px) {
+  html {
+    font-size: 14px; /* Smaller base font size for mobile */
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  html {
+    font-size: 16px; /* Tablet font size */
+  }
+}
+
+@media (min-width: 1024px) {
+  html {
+    font-size: 16px; /* Desktop font size */
+  }
+}
+
+/* Ensure all text uses relative units */
+body {
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+h1 { font-size: 2rem; }
+h2 { font-size: 1.5rem; }
+h3 { font-size: 1.25rem; }
+h4 { font-size: 1.125rem; }
+h5 { font-size: 1rem; }
+h6 { font-size: 0.875rem; }
+
+/* Leaflet map responsive styles */
 .leaflet-container {
   height: 100%;
   width: 100%;
+  min-height: 300px; /* Ensure minimum height on mobile */
 }
 
+/* Custom markers */
 .custom-marker {
   background: transparent !important;
   border: none !important;
@@ -20,7 +57,7 @@
   border: none !important;
 }
 
-/* Scrollbar styling */
+/* Scrollbar styling - responsive */
 .overflow-y-auto::-webkit-scrollbar {
   width: 6px;
 }
@@ -36,4 +73,125 @@
 
 .overflow-y-auto::-webkit-scrollbar-thumb:hover {
   background: #a8a8a8;
+}
+
+/* Touch-friendly button styles */
+button {
+  min-height: 44px; /* iOS/Android minimum touch target */
+  min-width: 44px;
+}
+
+/* Ensure images are responsive */
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Form inputs touch-friendly */
+input, select, textarea {
+  font-size: 16px; /* Prevent zoom on iOS */
+  min-height: 44px;
+}
+
+/* Mobile menu animations */
+.mobile-menu-enter {
+  transform: translateX(-100%);
+}
+
+.mobile-menu-enter-active {
+  transform: translateX(0);
+  transition: transform 300ms ease-out;
+}
+
+.mobile-menu-exit {
+  transform: translateX(0);
+}
+
+.mobile-menu-exit-active {
+  transform: translateX(-100%);
+  transition: transform 300ms ease-out;
+}
+
+/* Mobile overlay animations */
+.mobile-overlay-enter {
+  opacity: 0;
+}
+
+.mobile-overlay-enter-active {
+  opacity: 1;
+  transition: opacity 300ms ease-out;
+}
+
+.mobile-overlay-exit {
+  opacity: 1;
+}
+
+.mobile-overlay-exit-active {
+  opacity: 0;
+  transition: opacity 300ms ease-out;
+}
+
+/* Ensure mobile menu is above everything */
+.mobile-menu {
+  z-index: 9999;
+}
+
+/* Responsive Leaflet popups */
+@media (max-width: 640px) {
+  .leaflet-popup-content-wrapper {
+    padding: 8px;
+    font-size: 12px;
+  }
+
+  .leaflet-popup-content {
+    margin: 8px;
+    min-width: 180px;
+    max-width: 250px;
+  }
+
+  .leaflet-popup-tip {
+    width: 12px;
+    height: 8px;
+  }
+}
+
+@media (min-width: 641px) {
+  .leaflet-popup-content-wrapper {
+    padding: 12px;
+    font-size: 14px;
+  }
+
+  .leaflet-popup-content {
+    margin: 12px;
+    min-width: 200px;
+    max-width: 320px;
+  }
+
+  .leaflet-popup-tip {
+    width: 16px;
+    height: 10px;
+  }
+}
+
+/* Prevent horizontal overflow on small screens */
+* {
+  box-sizing: border-box;
+}
+
+.container-fluid {
+  width: 100%;
+  margin: 0;
+  padding: 0 1rem;
+}
+
+@media (min-width: 640px) {
+  .container-fluid {
+    padding: 0 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .container-fluid {
+    padding: 0 2rem;
+  }
 }

@@ -331,10 +331,10 @@ const MapView = ({ selectedArea, currentTime, setSelectedArea }) => {
             }}
           >
             <Popup>
-              <div className="text-sm max-w-xs">
-                <div className="font-semibold text-gray-900 mb-1">{area.name}</div>
+              <div className="text-xs sm:text-sm max-w-[200px] sm:max-w-xs p-1 sm:p-2">
+                <div className="font-semibold text-gray-900 mb-1 text-sm sm:text-base">{area.name}</div>
                 <div className="text-xs text-gray-500 mb-2">{area.category} • {area.distance} km away</div>
-                
+
                 <div className={`inline-block px-2 py-1 rounded-full text-xs font-medium mb-2 ${
                   area.status === 'available' ? 'bg-green-100 text-green-800' :
                   area.status === 'limited' ? 'bg-yellow-100 text-yellow-800' :
@@ -364,23 +364,23 @@ const MapView = ({ selectedArea, currentTime, setSelectedArea }) => {
       </MapContainer>
 
       {/* Map Legend */}
-      <div className="absolute top-4 right-4 bg-white rounded-lg shadow-lg p-3 z-[1000]">
-        <h3 className="text-sm font-semibold text-gray-900 mb-2">Legend</h3>
-        <div className="space-y-2">
+      <div className="absolute top-4 right-2 sm:right-4 bg-white rounded-lg shadow-lg p-2 sm:p-3 z-[1000] max-w-[160px] sm:max-w-none">
+        <h3 className="text-xs sm:text-sm font-semibold text-gray-900 mb-2">Legend</h3>
+        <div className="space-y-1 sm:space-y-2">
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 bg-green-500 rounded-full border-2 border-white shadow-sm"></div>
+            <div className="w-3 h-3 bg-green-500 rounded-full border-2 border-white shadow-sm flex-shrink-0"></div>
             <span className="text-xs text-gray-600">Likely Available</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 bg-yellow-500 rounded-full border-2 border-white shadow-sm"></div>
+            <div className="w-3 h-3 bg-yellow-500 rounded-full border-2 border-white shadow-sm flex-shrink-0"></div>
             <span className="text-xs text-gray-600">Limited / Busy</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 bg-red-500 rounded-full border-2 border-white shadow-sm"></div>
+            <div className="w-3 h-3 bg-red-500 rounded-full border-2 border-white shadow-sm flex-shrink-0"></div>
             <span className="text-xs text-gray-600">Avoid / Closed</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 bg-blue-500 rounded-full border-2 border-white shadow-sm"></div>
+            <div className="w-3 h-3 bg-blue-500 rounded-full border-2 border-white shadow-sm flex-shrink-0"></div>
             <span className="text-xs text-gray-600">Your Location</span>
           </div>
         </div>
@@ -388,26 +388,26 @@ const MapView = ({ selectedArea, currentTime, setSelectedArea }) => {
 
       {/* Selected Area Info */}
       {selectedArea && (
-        <div className="absolute bottom-4 left-4 bg-white rounded-lg shadow-lg p-4 max-w-sm z-[1000]">
+        <div className="absolute bottom-2 sm:bottom-4 left-2 sm:left-4 right-2 sm:right-auto bg-white rounded-lg shadow-lg p-3 sm:p-4 max-w-sm z-[1000]">
           <div className="flex items-start justify-between mb-2">
-            <h3 className="font-semibold text-gray-900">{selectedArea.name}</h3>
-            <button 
+            <h3 className="font-semibold text-gray-900 text-sm sm:text-base pr-2">{selectedArea.name}</h3>
+            <button
               onClick={() => setSelectedArea(null)}
-              className="text-gray-400 hover:text-gray-600"
+              className="text-gray-400 hover:text-gray-600 flex-shrink-0 p-1 min-h-[44px] min-w-[44px] flex items-center justify-center"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
           </div>
-          <div className="text-sm text-gray-600">
+          <div className="text-xs sm:text-sm text-gray-600">
             <p>{selectedArea.category} • {selectedArea.distance} km away</p>
             <p className="mt-1">{selectedArea.description}</p>
           </div>
           <button
             onClick={() => handleParkingClick(selectedArea)}
             disabled={isLoadingRoute}
-            className="mt-3 w-full bg-blue-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors disabled:bg-blue-300 disabled:cursor-not-allowed"
+            className="mt-3 w-full bg-blue-500 text-white px-3 py-3 rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors disabled:bg-blue-300 disabled:cursor-not-allowed min-h-[44px]"
           >
             {isLoadingRoute ? 'Calculating Route...' : 'Show Route'}
           </button>
@@ -415,8 +415,8 @@ const MapView = ({ selectedArea, currentTime, setSelectedArea }) => {
       )}
 
       {/* Location Permission Status */}
-      <div className="absolute top-4 left-4 bg-white rounded-lg shadow-lg p-3 z-[1000]">
-        <div className="flex items-center gap-2 text-sm">
+      <div className="absolute top-4 left-2 sm:left-4 bg-white rounded-lg shadow-lg p-2 sm:p-3 z-[1000]">
+        <div className="flex items-center gap-2 text-xs sm:text-sm">
           {locationPermission === 'granted' ? (
             <>
               <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
@@ -438,10 +438,10 @@ const MapView = ({ selectedArea, currentTime, setSelectedArea }) => {
 
       {/* Route Control */}
       {route && (
-        <div className="absolute top-20 left-4 bg-white rounded-lg shadow-lg p-3 z-[1000]">
+        <div className="absolute top-16 sm:top-20 left-2 sm:left-4 bg-white rounded-lg shadow-lg p-2 sm:p-3 z-[1000]">
           <button
             onClick={() => setRoute(null)}
-            className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900"
+            className="flex items-center gap-2 text-xs sm:text-sm text-gray-600 hover:text-gray-900 min-h-[44px] px-2"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

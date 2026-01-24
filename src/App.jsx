@@ -9,21 +9,159 @@ function App() {
   const [currentTime, setCurrentTime] = useState(new Date())
   const [isLiveMode, setIsLiveMode] = useState(false) // Default to SIMULATE mode
   const [activeTab, setActiveTab] = useState('map') // 'map' or 'list'
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="flex h-screen">
-        {/* Left Sidebar */}
-        <div className="w-96 bg-white border-r border-gray-200 overflow-y-auto">
+    <div className="h-screen bg-gray-50 flex flex-col">
+      {/* Mobile Header */}
+      <div className="lg:hidden bg-white border-b border-gray-200 px-4 py-3 z-30 flex-shrink-0">
+        <div className="flex items-center justify-between mb-3">
+          <h1 className="text-lg font-semibold text-gray-900">Parking Clarity</h1>
+          <button
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center active:bg-gray-200"
+            aria-label="Toggle menu"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              {isMobileMenuOpen ? (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              ) : (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              )}
+            </svg>
+          </button>
+        </div>
+
+        {/* Mobile Tab Navigation */}
+        <div className="flex bg-gray-100 rounded-lg p-1">
+          <button
+            onClick={() => setActiveTab('map')}
+            className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors min-h-[40px] ${
+              activeTab === 'map'
+                ? 'bg-white text-blue-600 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            Map
+          </button>
+          <button
+            onClick={() => setActiveTab('list')}
+            className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors min-h-[40px] ${
+              activeTab === 'list'
+                ? 'bg-white text-blue-600 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            List
+          </button>
+        </div>
+      </div>
+
+      {/* Mobile Menu Overlay */}
+      {isMobileMenuOpen && (
+        <div
+          className="lg:hidden fixed inset-0 bg-black bg-opacity-50"
+          style={{ zIndex: 9999 }}
+          onClick={() => setIsMobileMenuOpen(false)}
+        >
+          <div
+            className="fixed left-0 top-14 bottom-0 w-80 max-w-[85vw] bg-white shadow-xl overflow-y-auto"
+            style={{ zIndex: 10000 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-4 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-gray-900">Menu</h2>
+                <button
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="p-1 rounded-md text-gray-400 hover:text-gray-600"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div className="p-4">
+              <ClarityTime
+                currentTime={currentTime}
+                setCurrentTime={setCurrentTime}
+                isLiveMode={isLiveMode}
+                setIsLiveMode={setIsLiveMode}
+              />
+            </div>
+
+            {/* Tab Navigation */}
+            <div className="px-4 pb-4">
+              <div className="flex bg-gray-100 rounded-lg p-1">
+                <button
+                  onClick={() => {
+                    setActiveTab('map')
+                    setIsMobileMenuOpen(false)
+                  }}
+                  className={`flex-1 py-3 px-4 rounded-md text-sm font-medium transition-colors min-h-[44px] ${
+                    activeTab === 'map'
+                      ? 'bg-white text-blue-600 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  Map Explorer
+                </button>
+                <button
+                  onClick={() => {
+                    setActiveTab('list')
+                    setIsMobileMenuOpen(false)
+                  }}
+                  className={`flex-1 py-3 px-4 rounded-md text-sm font-medium transition-colors min-h-[44px] ${
+                    activeTab === 'list'
+                      ? 'bg-white text-blue-600 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  List Only
+                </button>
+              </div>
+            </div>
+
+            <div className="px-4 pb-4">
+              <div className="mb-4">
+                <h2 className="text-lg font-semibold text-gray-900 mb-3">Public Areas Near You</h2>
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Search name or type..."
+                    className="w-full px-4 py-3 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-base min-h-[44px]"
+                  />
+                  <svg className="absolute left-3 top-3.5 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+              </div>
+
+              <ParkingList
+                selectedArea={selectedArea}
+                setSelectedArea={setSelectedArea}
+                currentTime={currentTime}
+                onAreaSelect={() => setIsMobileMenuOpen(false)}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="flex flex-1 overflow-hidden">
+        {/* Desktop Sidebar */}
+        <div className="hidden lg:flex lg:w-96 lg:bg-white lg:border-r lg:border-gray-200 lg:overflow-y-auto lg:flex-col">
           <div className="p-4">
-            <ClarityTime 
+            <ClarityTime
               currentTime={currentTime}
               setCurrentTime={setCurrentTime}
               isLiveMode={isLiveMode}
               setIsLiveMode={setIsLiveMode}
             />
           </div>
-          
+
           {/* Tab Navigation */}
           <div className="px-4 pb-4">
             <div className="flex bg-gray-100 rounded-lg p-1">
@@ -49,7 +187,7 @@ function App() {
               </button>
             </div>
           </div>
-          
+
           <div className="px-4 pb-4">
             <div className="mb-4">
               <h2 className="text-xl font-semibold text-gray-900 mb-3">Public Areas Near You</h2>
@@ -64,8 +202,8 @@ function App() {
                 </svg>
               </div>
             </div>
-            
-            <ParkingList 
+
+            <ParkingList
               selectedArea={selectedArea}
               setSelectedArea={setSelectedArea}
               currentTime={currentTime}
@@ -73,19 +211,19 @@ function App() {
           </div>
         </div>
 
-        {/* Right Content Area */}
-        <div className="flex-1">
+        {/* Main Content Area */}
+        <div className="flex-1 min-w-0 overflow-hidden">
           {activeTab === 'map' ? (
-            <MapView 
+            <MapView
               selectedArea={selectedArea}
               setSelectedArea={setSelectedArea}
               currentTime={currentTime}
             />
           ) : (
-            <div className="w-full h-full bg-gray-50 p-8 overflow-y-auto">
-              <div className="max-w-4xl mx-auto">
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">Parking Areas List</h2>
-                <ParkingList 
+            <div className="w-full h-full bg-gray-50 p-4 sm:p-6 lg:p-8 overflow-y-auto">
+              <div className="max-w-7xl mx-auto">
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 sm:mb-6">Parking Areas List</h2>
+                <ParkingList
                   selectedArea={selectedArea}
                   setSelectedArea={setSelectedArea}
                   currentTime={currentTime}

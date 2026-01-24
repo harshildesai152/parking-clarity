@@ -54,7 +54,7 @@ const ParkingDetailModal = ({ parkingArea, onClose, onShowRoute }) => {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto mx-4">
         <div className="p-6">
           <div className="flex items-start justify-between mb-4">
             <div>
@@ -116,13 +116,13 @@ const ParkingDetailModal = ({ parkingArea, onClose, onShowRoute }) => {
           <div className="flex gap-3">
             <button
               onClick={onShowRoute}
-              className="flex-1 bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors"
+              className="flex-1 bg-blue-500 text-white px-4 py-3 rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors min-h-[44px]"
             >
               Show Route
             </button>
             <button
               onClick={onClose}
-              className="flex-1 bg-gray-200 text-gray-800 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-300 transition-colors"
+              className="flex-1 bg-gray-200 text-gray-800 px-4 py-3 rounded-lg text-sm font-medium hover:bg-gray-300 transition-colors min-h-[44px]"
             >
               Close
             </button>
@@ -206,7 +206,7 @@ const staticParkingData = [
   }
 ]
 
-const ParkingList = ({ selectedArea, setSelectedArea, currentTime, fullWidth = false }) => {
+const ParkingList = ({ selectedArea, setSelectedArea, currentTime, fullWidth = false, onAreaSelect }) => {
   const [detailModal, setDetailModal] = useState(null)
 
   const handleCardClick = (parkingArea) => {
@@ -216,6 +216,10 @@ const ParkingList = ({ selectedArea, setSelectedArea, currentTime, fullWidth = f
     } else {
       // In sidebar mode, select for map
       setSelectedArea(parkingArea)
+      // Close mobile menu if callback provided
+      if (onAreaSelect) {
+        onAreaSelect()
+      }
     }
   }
 
@@ -282,7 +286,7 @@ const ParkingList = ({ selectedArea, setSelectedArea, currentTime, fullWidth = f
 
   return (
     <>
-      <div className={fullWidth ? 'grid grid-cols-1 md:grid-cols-2 gap-6' : 'space-y-3'}>
+      <div className={fullWidth ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6' : 'space-y-3'}>
         {staticParkingData.map((area) => (
           <div
             key={area.id}
