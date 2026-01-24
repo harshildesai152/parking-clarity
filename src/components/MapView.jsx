@@ -16,10 +16,13 @@ const staticParkingData = [
     id: 1,
     name: 'Diamond Hospital Varachha',
     category: 'Hospital',
+    vehicleTypes: ['car', 'motorcycle'],
+    capacity: { car: 25, motorcycle: 15, total: 40 },
     distance: 1.7,
     description: 'Busy hospital zone in the heart of the diamond district. High vehicle turnover.',
     status: 'avoid',
     operatingHours: '0:00 - 23:00',
+    maxDuration: 120,
     rules: [
       'Strictly for patients/visitors',
       'No long-term parking'
@@ -30,10 +33,13 @@ const staticParkingData = [
     id: 2,
     name: 'Surat Railway Station Market',
     category: 'Market',
+    vehicleTypes: ['motorcycle', 'bicycle'],
+    capacity: { motorcycle: 50, bicycle: 30, total: 80 },
     distance: 2.9,
     description: 'Bustling market area near the railway station with high foot traffic.',
     status: 'avoid',
     operatingHours: '6:00 - 22:00',
+    maxDuration: 60,
     rules: [
       'Paid parking',
       '2-wheeler separate area'
@@ -44,10 +50,13 @@ const staticParkingData = [
     id: 3,
     name: 'City Center Mall',
     category: 'Shopping Mall',
+    vehicleTypes: ['car', 'motorcycle', 'truck'],
+    capacity: { car: 150, motorcycle: 75, truck: 10, total: 235 },
     distance: 3.2,
     description: 'Modern shopping complex with multiple retail outlets and food court.',
     status: 'limited',
     operatingHours: '10:00 - 23:00',
+    maxDuration: 480,
     rules: [
       'First 2 hours free',
       'Validation required'
@@ -58,10 +67,13 @@ const staticParkingData = [
     id: 4,
     name: 'VR Mall',
     category: 'Shopping Mall',
+    vehicleTypes: ['car', 'motorcycle', 'ev'],
+    capacity: { car: 200, motorcycle: 100, ev: 20, total: 320 },
     distance: 4.1,
     description: 'Large entertainment and shopping destination with cinema complex.',
     status: 'available',
     operatingHours: '9:00 - 23:30',
+    maxDuration: 720,
     rules: [
       'Free parking',
       'EV charging available'
@@ -72,10 +84,13 @@ const staticParkingData = [
     id: 5,
     name: 'Government Office Complex',
     category: 'Office',
+    vehicleTypes: ['car', 'motorcycle'],
+    capacity: { car: 40, motorcycle: 25, total: 65 },
     distance: 2.3,
     description: 'Administrative buildings with limited visitor parking.',
     status: 'limited',
     operatingHours: '9:00 - 17:00',
+    maxDuration: 240,
     rules: [
       'Visitor pass required',
       'No overnight parking'
@@ -127,7 +142,7 @@ const MapController = ({ selectedArea, route }) => {
   return null
 }
 
-const MapView = ({ selectedArea, currentTime, setSelectedArea, selectedCategories = [] }) => {
+const MapView = ({ selectedArea, currentTime, setSelectedArea, selectedCategories = [], selectedVehicleTypes = [], parkingDuration = null }) => {
   const [userLocation, setUserLocation] = useState([21.2000, 72.8400]) // Default: Surat city center
   const [isClient, setIsClient] = useState(false)
   const [route, setRoute] = useState(null)
@@ -341,7 +356,24 @@ const MapView = ({ selectedArea, currentTime, setSelectedArea, selectedCategorie
 
         {/* Parking Locations */}
         {staticParkingData
-          .filter(area => selectedCategories.length === 0 || selectedCategories.includes(area.category))
+          .filter(area => {
+            // Category filter
+            if (selectedCategories.length > 0 && !selectedCategories.includes(area.category)) {
+              return false
+            }
+
+            // Vehicle type filter
+            if (selectedVehicleTypes.length > 0 && (!area.vehicleTypes || !selectedVehicleTypes.some(type => area.vehicleTypes.includes(type)))) {
+              return false
+            }
+
+            // Duration filter
+            if (parkingDuration && area.maxDuration && parseInt(parkingDuration) > area.maxDuration) {
+              return false
+            }
+
+            return true
+          })
           .map((area) => (
           <Marker
             key={area.id}
