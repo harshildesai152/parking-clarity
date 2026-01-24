@@ -43,7 +43,7 @@ function App() {
         {/* Location Search & Radius */}
         <div className="space-y-3 mb-3">
           <div className="flex gap-2">
-            <div className="flex-1 relative">
+            {/* <div className="flex-1 relative">
               <input
                 type="text"
                 placeholder="Enter location..."
@@ -55,8 +55,8 @@ function App() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
-            </div>
-            <button
+            </div> */}
+            {/* <button
               onClick={() => {
                 if (navigator.geolocation) {
                   navigator.geolocation.getCurrentPosition(
@@ -71,7 +71,7 @@ function App() {
               className="px-3 py-2 bg-blue-500 text-white text-sm rounded-lg hover:bg-blue-600 transition-colors"
             >
               📍
-            </button>
+            </button> */}
           </div>
 
           <div className="flex items-center gap-2">
