@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import ClarityTime from './components/ClarityTime'
 import ParkingList from './components/ParkingList'
 import MapView from './components/MapView'
@@ -24,6 +24,27 @@ function App() {
   const [searchRadius, setSearchRadius] = useState(1000) // Default 1km
   const [searchLocation, setSearchLocation] = useState('')
   const [userLocation, setUserLocation] = useState(null)
+  const [parkingData, setParkingData] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchParkingData = async () => {
+      try {
+        setIsLoading(true)
+        const response = await fetch('http://localhost:5000/api/parking')
+        const result = await response.json()
+        if (result && result.data) {
+          setParkingData(result.data)
+        }
+      } catch (error) {
+        console.error('Error fetching parking data:', error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchParkingData()
+  }, [])
 
   return (
     <ReportsProvider>
@@ -337,6 +358,8 @@ function App() {
               </div>
 
               <ParkingList
+                parkingData={parkingData}
+                isLoading={isLoading}
                 selectedArea={selectedArea}
                 setSelectedArea={setSelectedArea}
                 currentTime={currentTime}
@@ -615,6 +638,8 @@ function App() {
                 </div>
                 
                 <ParkingList 
+                  parkingData={parkingData}
+                  isLoading={isLoading}
                   selectedArea={selectedArea}
                   setSelectedArea={setSelectedArea}
                   currentTime={currentTime}
@@ -636,6 +661,8 @@ function App() {
         <div className="flex-1 min-w-0 overflow-hidden relative">
           {activeTab === 'map' ? (
             <MapView 
+              parkingData={parkingData}
+              isLoading={isLoading}
               selectedArea={selectedArea}
               setSelectedArea={setSelectedArea}
               currentTime={currentTime}
@@ -677,6 +704,8 @@ function App() {
                 {/* Tab Content */}
                 {listViewTab === 'parking' ? (
                   <ParkingList 
+                    parkingData={parkingData}
+                    isLoading={isLoading}
                     selectedArea={selectedArea}
                     setSelectedArea={setSelectedArea}
                     currentTime={currentTime}
