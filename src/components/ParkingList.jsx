@@ -1,394 +1,13 @@
 import { useState } from 'react'
 import { useFavorites } from '../contexts/FavoritesContext'
 import { useReports } from '../contexts/ReportsContext'
+import { calculateStatus } from '../utils/statusUtils'
 
-const staticParkingData = [
-  {
-    id: 1,
-    name: 'Diamond Hospital Varachha',
-    category: 'Hospital',
-    parkingType: 'free',
-    vehicleTypes: ['car', 'motorcycle'],
-    capacity: { car: 25, motorcycle: 15, total: 40 },
-    distance: 1.7,
-    description: 'Busy hospital zone in the heart of the diamond district. High vehicle turnover.',
-    status: 'avoid',
-    operatingHours: '0:00 - 23:00',
-    maxDuration: 120, // minutes
-    dayWiseAvailability: {
-      sunday: {
-        status: 'parked',
-        startTime: '08:30',
-        endTime: '12:45',
-        duration: '4h 15m',
-        isFestival: false
-      },
-      monday: {
-        status: 'not_parked',
-        startTime: null,
-        endTime: null,
-        duration: null,
-        isFestival: false
-      },
-      tuesday: {
-        status: 'parked',
-        startTime: '09:15',
-        endTime: '17:30',
-        duration: '8h 15m',
-        isFestival: false
-      },
-      wednesday: {
-        status: 'parked',
-        startTime: '10:00',
-        endTime: '14:20',
-        duration: '4h 20m',
-        isFestival: false
-      },
-      thursday: {
-        status: 'not_parked',
-        startTime: null,
-        endTime: null,
-        duration: null,
-        isFestival: true,
-        festivalName: 'Diwali',
-        festivalAvailable: false
-      },
-      friday: {
-        status: 'parked',
-        startTime: '11:30',
-        endTime: '16:45',
-        duration: '5h 15m',
-        isFestival: false
-      },
-      saturday: {
-        status: 'parked',
-        startTime: '07:00',
-        endTime: '19:30',
-        duration: '12h 30m',
-        isFestival: false
-      }
-    },
-    festivalAvailability: {
-      diwali: { available: false, note: 'Closed during Diwali festival' },
-      holi: { available: true, hours: '8:00-18:00', note: 'Limited hours during Holi' },
-      christmas: { available: true, hours: '9:00-17:00', note: 'Normal operation' }
-    },
-    rules: [
-      'Strictly for patients/visitors',
-      'No long-term parking'
-    ],
-    coordinates: [21.2054, 72.8422]
-  },
-  {
-    id: 2,
-    name: 'Surat Railway Station Market',
-    category: 'Market',
-    parkingType: 'street',
-    vehicleTypes: ['motorcycle', 'bicycle'],
-    capacity: { motorcycle: 50, bicycle: 30, total: 80 },
-    distance: 2.9,
-    description: 'Bustling market area near the railway station with high foot traffic.',
-    status: 'avoid',
-    operatingHours: '6:00 - 22:00',
-    maxDuration: 60,
-    dayWiseAvailability: {
-      sunday: {
-        status: 'parked',
-        startTime: '08:30',
-        endTime: '12:45',
-        duration: '4h 15m',
-        isFestival: false
-      },
-      monday: {
-        status: 'parked',
-        startTime: '07:00',
-        endTime: '14:30',
-        duration: '7h 30m',
-        isFestival: false
-      },
-      tuesday: {
-        status: 'not_parked',
-        startTime: null,
-        endTime: null,
-        duration: null,
-        isFestival: false
-      },
-      wednesday: {
-        status: 'parked',
-        startTime: '09:15',
-        endTime: '16:45',
-        duration: '7h 30m',
-        isFestival: false
-      },
-      thursday: {
-        status: 'parked',
-        startTime: '08:00',
-        endTime: '18:30',
-        duration: '10h 30m',
-        isFestival: true,
-        festivalName: 'Diwali',
-        festivalAvailable: true
-      },
-      friday: {
-        status: 'parked',
-        startTime: '06:30',
-        endTime: '21:00',
-        duration: '14h 30m',
-        isFestival: false
-      },
-      saturday: {
-        status: 'parked',
-        startTime: '07:30',
-        endTime: '22:15',
-        duration: '14h 45m',
-        isFestival: false
-      }
-    },
-    festivalAvailability: {
-      diwali: { available: true, hours: '8:00-20:00', note: 'Extended hours during Diwali shopping' },
-      holi: { available: false, note: 'Closed during Holi festival' },
-      christmas: { available: true, hours: '7:00-21:00', note: 'Holiday shopping hours' }
-    },
-    rules: [
-      'Paid parking',
-      '2-wheeler separate area'
-    ],
-    coordinates: [21.1954, 72.8322]
-  },
-  {
-    id: 3,
-    name: 'City Center Mall',
-    category: 'Shopping Mall',
-    parkingType: 'paid',
-    vehicleTypes: ['car', 'motorcycle', 'truck'],
-    capacity: { car: 150, motorcycle: 75, truck: 10, total: 235 },
-    distance: 3.2,
-    description: 'Modern shopping complex with multiple retail outlets and food court.',
-    status: 'limited',
-    operatingHours: '10:00 - 23:00',
-    maxDuration: 480, // 8 hours
-    reports: {
-      count: 13,
-      lastUpdated: Date.now() - 25 * 60 * 1000 // 25 minutes ago
-    },
-    dayWiseAvailability: {
-      sunday: {
-        status: 'parked',
-        startTime: '13:20',
-        endTime: '18:45',
-        duration: '5h 25m',
-        isFestival: false
-      },
-      monday: {
-        status: 'parked',
-        startTime: '08:00',
-        endTime: '12:00',
-        duration: '4h 0m',
-        isFestival: false
-      },
-      tuesday: {
-        status: 'not_parked',
-        startTime: null,
-        endTime: null,
-        duration: null,
-        isFestival: false
-      },
-      wednesday: {
-        status: 'parked',
-        startTime: '14:30',
-        endTime: '20:15',
-        duration: '5h 45m',
-        isFestival: false
-      },
-      thursday: {
-        status: 'parked',
-        startTime: '10:45',
-        endTime: '23:00',
-        duration: '12h 15m',
-        isFestival: true,
-        festivalName: 'Diwali',
-        festivalAvailable: true
-      },
-      friday: {
-        status: 'parked',
-        startTime: '16:00',
-        endTime: '22:30',
-        duration: '6h 30m',
-        isFestival: false
-      },
-      saturday: {
-        status: 'parked',
-        startTime: '10:30',
-        endTime: '23:00',
-        duration: '12h 30m',
-        isFestival: false
-      }
-    },
-    festivalAvailability: {
-      diwali: { available: true, hours: '9:00-24:00', note: 'Extended hours for Diwali shopping' },
-      holi: { available: true, hours: '11:00-22:00', note: 'Special Holi celebration hours' },
-      christmas: { available: true, hours: '10:00-24:00', note: 'Christmas shopping extended hours' }
-    },
-    rules: [
-      'First 2 hours free',
-      'Validation required'
-    ],
-    coordinates: [21.2154, 72.8522]
-  },
-  {
-    id: 4,
-    name: 'VR Mall',
-    category: 'Shopping Mall',
-    parkingType: 'covered',
-    vehicleTypes: ['car', 'motorcycle', 'ev'],
-    capacity: { car: 200, motorcycle: 100, ev: 20, total: 320 },
-    distance: 4.1,
-    description: 'Large entertainment and shopping destination with cinema complex.',
-    status: 'available',
-    operatingHours: '9:00 - 23:30',
-    maxDuration: 720, // 12 hours
-    dayWiseAvailability: {
-      sunday: {
-        status: 'parked',
-        startTime: '12:30',
-        endTime: '20:15',
-        duration: '7h 45m',
-        isFestival: false
-      },
-      monday: {
-        status: 'parked',
-        startTime: '09:30',
-        endTime: '15:45',
-        duration: '6h 15m',
-        isFestival: false
-      },
-      tuesday: {
-        status: 'parked',
-        startTime: '11:00',
-        endTime: '18:30',
-        duration: '7h 30m',
-        isFestival: false
-      },
-      wednesday: {
-        status: 'parked',
-        startTime: '14:15',
-        endTime: '22:00',
-        duration: '7h 45m',
-        isFestival: false
-      },
-      thursday: {
-        status: 'parked',
-        startTime: '10:30',
-        endTime: '23:30',
-        duration: '13h 0m',
-        isFestival: true,
-        festivalName: 'Diwali',
-        festivalAvailable: true
-      },
-      friday: {
-        status: 'parked',
-        startTime: '13:45',
-        endTime: '23:15',
-        duration: '9h 30m',
-        isFestival: false
-      },
-      saturday: {
-        status: 'parked',
-        startTime: '11:30',
-        endTime: '23:45',
-        duration: '12h 15m',
-        isFestival: false
-      }
-    },
-    festivalAvailability: {
-      diwali: { available: true, hours: '8:00-24:00', note: 'Full day celebration and shopping' },
-      holi: { available: true, hours: '10:00-23:00', note: 'Holi color festival events' },
-      christmas: { available: true, hours: '9:00-24:00', note: 'Christmas celebrations and events' }
-    },
-    rules: [
-      'Free parking',
-      'EV charging available'
-    ],
-    coordinates: [21.2254, 72.8622]
-  },
-  {
-    id: 5,
-    name: 'Government Office Complex',
-    category: 'Office',
-    parkingType: 'free',
-    vehicleTypes: ['car', 'motorcycle'],
-    capacity: { car: 40, motorcycle: 25, total: 65 },
-    distance: 2.3,
-    description: 'Administrative buildings with limited visitor parking.',
-    status: 'limited',
-    operatingHours: '9:00 - 17:00',
-    maxDuration: 240, // 4 hours
-    dayWiseAvailability: {
-      sunday: {
-        status: 'not_parked',
-        startTime: null,
-        endTime: null,
-        duration: null,
-        isFestival: false
-      },
-      monday: {
-        status: 'parked',
-        startTime: '09:30',
-        endTime: '13:15',
-        duration: '3h 45m',
-        isFestival: false
-      },
-      tuesday: {
-        status: 'parked',
-        startTime: '10:00',
-        endTime: '14:30',
-        duration: '4h 30m',
-        isFestival: false
-      },
-      wednesday: {
-        status: 'parked',
-        startTime: '08:45',
-        endTime: '12:00',
-        duration: '3h 15m',
-        isFestival: false
-      },
-      thursday: {
-        status: 'not_parked',
-        startTime: null,
-        endTime: null,
-        duration: null,
-        isFestival: true,
-        festivalName: 'Diwali',
-        festivalAvailable: false
-      },
-      friday: {
-        status: 'parked',
-        startTime: '11:15',
-        endTime: '15:45',
-        duration: '4h 30m',
-        isFestival: false
-      },
-      saturday: {
-        status: 'not_parked',
-        startTime: null,
-        endTime: null,
-        duration: null,
-        isFestival: false
-      }
-    },
-    festivalAvailability: {
-      diwali: { available: false, note: 'Government offices closed for Diwali' },
-      holi: { available: false, note: 'Government offices closed for Holi' },
-      christmas: { available: false, note: 'Government offices closed for Christmas' }
-    },
-    rules: [
-      'Visitor pass required',
-      'No overnight parking'
-    ]
-  }
-  ]
+
 
   const ParkingList = ({ 
+  parkingData = [],
+  isLoading = false,
   selectedArea, 
   setSelectedArea, 
   currentTime, 
@@ -400,6 +19,17 @@ const staticParkingData = [
   parkingDuration = '',
   filterByAvailability = null
 }) => {
+  // Normalize parking data
+  const normalizedParkingData = parkingData.map(area => ({
+    ...area,
+    id: area._id || area.id,
+    coordinates: area.location ? [area.location.lat, area.location.lng] : area.coordinates,
+    // Map "bike" to "motorcycle" in vehicleTypes
+    vehicleTypes: (area.vehicleTypes || []).map(v => v === 'bike' ? 'motorcycle' : v),
+    status: calculateStatus(area, currentTime),
+    distance: area.distance || 0,
+    operatingHours: area.operatingHours ? (typeof area.operatingHours === 'string' ? area.operatingHours : 'Open') : 'N/A'
+  }))
   const [availabilityModal, setAvailabilityModal] = useState(null)
   const [reportModal, setReportModal] = useState(null)
   const [reportReason, setReportReason] = useState('')
@@ -525,9 +155,10 @@ const staticParkingData = [
   }
 
   // Filter parking data based on selected categories, vehicle types, parking types, duration, and availability
-  const filteredData = staticParkingData.filter(area => {
-    // Category filter
-    if (selectedCategories.length > 0 && !selectedCategories.includes(area.category)) {
+  const filteredData = normalizedParkingData.filter(area => {
+    // Category filter - map API category to UI filter
+    const uiCategory = area.category ? area.category.charAt(0).toUpperCase() + area.category.slice(1) : ''
+    if (selectedCategories.length > 0 && !selectedCategories.includes(uiCategory) && !selectedCategories.includes(area.category)) {
       return false
     }
 
@@ -562,6 +193,12 @@ const staticParkingData = [
 
   return (
     <>
+      {isLoading && (
+        <div className="flex justify-center p-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+          <span className="ml-3 text-gray-600">Loading parking data...</span>
+        </div>
+      )}
       <div className={fullWidth ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6' : 'space-y-3'}>
         {filteredData.map((area) => (
           <div
@@ -606,7 +243,11 @@ const staticParkingData = [
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                   <span className="text-gray-600">
-                    Capacity: {area.capacity.total || Object.values(area.capacity).reduce((sum, val) => sum + (typeof val === 'number' ? val : 0), 0)} spots
+                    Capacity: {area.capacity?.total || Object.values(area.capacity || {}).reduce((sum, val) => {
+                      if (typeof val === 'number') return sum + val;
+                      if (val && typeof val.total === 'number') return sum + val.total;
+                      return sum;
+                    }, 0)} spots
                     {area.vehicleTypes && area.vehicleTypes.length > 0 && (
                       <span className="text-xs ml-1">
                         ({area.vehicleTypes.map(type => {
@@ -824,15 +465,17 @@ const AvailabilityDetailModal = ({ parkingArea, onClose }) => {
 
   // Calculate weekly statistics
   const weeklyStats = daysOfWeek.reduce((stats, day) => {
-    const dayData = parkingArea.dayWiseAvailability[day.key]
+    const dayData = parkingArea.dayWiseAvailability?.[day.key] || { status: 'available', isFestival: false }
     if (dayData.status === 'parked') {
       stats.parkedDays++
       // Parse duration like "4h 15m" to minutes
-      const durationMatch = dayData.duration.match(/(\d+)h\s*(\d+)m/)
-      if (durationMatch) {
-        const hours = parseInt(durationMatch[1])
-        const minutes = parseInt(durationMatch[2])
-        stats.totalParkingTime += (hours * 60) + minutes
+      if (dayData.duration) {
+        const durationMatch = dayData.duration.match(/(\d+)h\s*(\d+)m/)
+        if (durationMatch) {
+          const hours = parseInt(durationMatch[1])
+          const minutes = parseInt(durationMatch[2])
+          stats.totalParkingTime += (hours * 60) + minutes
+        }
       }
     }
     if (dayData.isFestival) {
@@ -1024,7 +667,7 @@ const AvailabilityDetailModal = ({ parkingArea, onClose }) => {
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Daily Availability</h3>
             <div className="grid gap-3">
               {daysOfWeek.map((day) => {
-                const dayData = parkingArea.dayWiseAvailability[day.key]
+                const dayData = parkingArea.dayWiseAvailability?.[day.key] || { status: 'available', isFestival: false }
                 return (
                   <div key={day.key} className={`rounded-xl p-4 border-2 transition-all hover:shadow-md ${
                     dayData.isFestival

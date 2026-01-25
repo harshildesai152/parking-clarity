@@ -2,6 +2,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 const cors = require('cors');
+const parkingRoutes = require('./routes/parking');
 
 dotenv.config();
 
@@ -18,6 +19,8 @@ mongoose.connect(process.env.MONGODB_URI)
 app.get('/', (req, res) => {
   res.json({ message: 'Parking Clarity Backend API is running' });
 });
+
+app.use('/api/parking', parkingRoutes);
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);

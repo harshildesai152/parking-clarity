@@ -3,6 +3,7 @@ import { MapContainer, TileLayer, Marker, Popup, Circle, Polyline, useMap } from
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
 import { useFavorites } from '../contexts/FavoritesContext'
+import { calculateStatus } from '../utils/statusUtils'
 
 // Fix for default marker icon in react-leaflet
 delete L.Icon.Default.prototype._getIconUrl
@@ -11,94 +12,6 @@ L.Icon.Default.mergeOptions({
   iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 })
-
-const staticParkingData = [
-  {
-    id: 1,
-    name: 'Diamond Hospital Varachha',
-    category: 'Hospital',
-    vehicleTypes: ['car', 'motorcycle'],
-    capacity: { car: 25, motorcycle: 15, total: 40 },
-    distance: 1.7,
-    description: 'Busy hospital zone in the heart of the diamond district. High vehicle turnover.',
-    status: 'avoid',
-    operatingHours: '0:00 - 23:00',
-    maxDuration: 120,
-    rules: [
-      'Strictly for patients/visitors',
-      'No long-term parking'
-    ],
-    coordinates: [21.2054, 72.8422]
-  },
-  {
-    id: 2,
-    name: 'Surat Railway Station Market',
-    category: 'Market',
-    vehicleTypes: ['motorcycle', 'bicycle'],
-    capacity: { motorcycle: 50, bicycle: 30, total: 80 },
-    distance: 2.9,
-    description: 'Bustling market area near the railway station with high foot traffic.',
-    status: 'avoid',
-    operatingHours: '6:00 - 22:00',
-    maxDuration: 60,
-    rules: [
-      'Paid parking',
-      '2-wheeler separate area'
-    ],
-    coordinates: [21.1954, 72.8322]
-  },
-  {
-    id: 3,
-    name: 'City Center Mall',
-    category: 'Shopping Mall',
-    vehicleTypes: ['car', 'motorcycle', 'truck'],
-    capacity: { car: 150, motorcycle: 75, truck: 10, total: 235 },
-    distance: 3.2,
-    description: 'Modern shopping complex with multiple retail outlets and food court.',
-    status: 'limited',
-    operatingHours: '10:00 - 23:00',
-    maxDuration: 480,
-    rules: [
-      'First 2 hours free',
-      'Validation required'
-    ],
-    coordinates: [21.2154, 72.8522]
-  },
-  {
-    id: 4,
-    name: 'VR Mall',
-    category: 'Shopping Mall',
-    vehicleTypes: ['car', 'motorcycle', 'ev'],
-    capacity: { car: 200, motorcycle: 100, ev: 20, total: 320 },
-    distance: 4.1,
-    description: 'Large entertainment and shopping destination with cinema complex.',
-    status: 'available',
-    operatingHours: '9:00 - 23:30',
-    maxDuration: 720,
-    rules: [
-      'Free parking',
-      'EV charging available'
-    ],
-    coordinates: [21.2254, 72.8622]
-  },
-  {
-    id: 5,
-    name: 'Government Office Complex',
-    category: 'Office',
-    vehicleTypes: ['car', 'motorcycle'],
-    capacity: { car: 40, motorcycle: 25, total: 65 },
-    distance: 2.3,
-    description: 'Administrative buildings with limited visitor parking.',
-    status: 'limited',
-    operatingHours: '9:00 - 17:00',
-    maxDuration: 240,
-    rules: [
-      'Visitor pass required',
-      'No overnight parking'
-    ],
-    coordinates: [21.1854, 72.8222]
-  }
-]
 
 // MapController component to handle map interactions
 const MapController = ({ selectedArea, route }) => {
@@ -144,6 +57,8 @@ const MapController = ({ selectedArea, route }) => {
 }
 
 const MapView = ({ 
+  parkingData = [],
+  isLoading: isLoadingAPI = false,
   selectedArea, 
   currentTime, 
   setSelectedArea, 
@@ -153,12 +68,36 @@ const MapView = ({
   parkingDuration = null,
   filterByAvailability = null 
 }) => {
+  // Normalize parking data to match UI expectations
+  const normalizedParkingData = parkingData.map(area => ({
+    ...area,
+    id: area._id || area.id,
+    coordinates: area.location ? [area.location.lat, area.location.lng] : area.coordinates,
+    // Map "bike" to "motorcycle" in vehicleTypes
+    vehicleTypes: (area.vehicleTypes || []).map(v => v === 'bike' ? 'motorcycle' : v),
+    status: calculateStatus(area, currentTime),
+    // Ensure all required fields exist
+    distance: area.distance || 0,
+    operatingHours: area.operatingHours ? (typeof area.operatingHours === 'string' ? area.operatingHours : 'Open') : 'N/A'
+  }))
+
   const [userLocation, setUserLocation] = useState([21.2000, 72.8400]) // Default: Surat city center
   const [isClient, setIsClient] = useState(false)
   const [route, setRoute] = useState(null)
   const [isLoadingRoute, setIsLoadingRoute] = useState(false)
-  const [locationPermission, setLocationPermission] = useState('prompt') // 'prompt', 'granted', 'denied'
+  const [locationPermission, setLocationPermission] = useState('prompt') // 'prompt', 'granted', 'denied')
   const { toggleFavorite, isFavorite } = useFavorites()
+  const mapRef = useRef(null)
+
+  // Auto-center map on first result when data arrives
+  useEffect(() => {
+    if (normalizedParkingData.length > 0 && mapRef.current) {
+      const firstSpot = normalizedParkingData[0];
+      if (firstSpot.coordinates) {
+        mapRef.current.flyTo(firstSpot.coordinates, 13);
+      }
+    }
+  }, [parkingData.length === 0 && normalizedParkingData.length > 0]) // Only on first load of data
 
   useEffect(() => {
     setIsClient(true)
@@ -335,7 +274,16 @@ const MapView = ({
 
   return (
     <div className="w-full h-full relative">
+      {isLoadingAPI && (
+        <div className="absolute inset-0 bg-white bg-opacity-70 z-[2000] flex items-center justify-center pointer-events-none">
+          <div className="flex flex-col items-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-2"></div>
+            <div className="text-blue-600 font-medium">Updating parking spots...</div>
+          </div>
+        </div>
+      )}
       <MapContainer
+        ref={mapRef}
         center={userLocation}
         zoom={13}
         style={{ height: '100%', width: '100%' }}
@@ -383,10 +331,11 @@ const MapView = ({
         )}
 
         {/* Parking Locations */}
-        {staticParkingData
+        {normalizedParkingData
           .filter(area => {
-            // Category filter
-            if (selectedCategories.length > 0 && !selectedCategories.includes(area.category)) {
+            // Category filter - map API category to UI filter
+            const uiCategory = area.category ? area.category.charAt(0).toUpperCase() + area.category.slice(1) : ''
+            if (selectedCategories.length > 0 && !selectedCategories.includes(uiCategory) && !selectedCategories.includes(area.category)) {
               return false
             }
 
@@ -451,7 +400,7 @@ const MapView = ({
                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    {area.operatingHours}
+                    {typeof area.operatingHours === 'string' ? area.operatingHours : '24/7'}
                   </div>
                 </div>
 
