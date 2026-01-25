@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 const ClarityTime = ({ currentTime, setCurrentTime, isLiveMode, setIsLiveMode }) => {
   const [simulateTime, setSimulateTime] = useState(
@@ -7,6 +7,15 @@ const ClarityTime = ({ currentTime, setCurrentTime, isLiveMode, setIsLiveMode })
   const [simulateDay, setSimulateDay] = useState(
     currentTime.toLocaleDateString('en-US', { weekday: 'long' })
   )
+  const [liveCurrentTime, setLiveCurrentTime] = useState(new Date())
+
+  // Live time update effect
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setLiveCurrentTime(new Date())
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [])
 
   const handleTimeChange = (newTime) => {
     setSimulateTime(newTime)
@@ -93,11 +102,16 @@ const ClarityTime = ({ currentTime, setCurrentTime, isLiveMode, setIsLiveMode })
 
       <div className="mt-4 pt-4 border-t border-gray-200">
         <p className="text-sm text-gray-600">
-          {isLiveMode ? 'Current time' : 'Viewing for'} {currentTime.toLocaleTimeString('en-US', { 
-            hour: '2-digit', 
-            minute: '2-digit',
-            hour12: false 
-          })}
+          {isLiveMode ? 'Current time' : 'Viewing for'}{' '}
+          {isLiveMode ? (
+            `${liveCurrentTime.getHours().toString().padStart(2, '0')}:${liveCurrentTime.getMinutes().toString().padStart(2, '0')}:${liveCurrentTime.getSeconds().toString().padStart(2, '0')}`
+          ) : (
+            currentTime.toLocaleTimeString('en-US', { 
+              hour: '2-digit', 
+              minute: '2-digit',
+              hour12: false 
+            })
+          )}
           {!isLiveMode && (
             <span className="ml-1">
               on {currentTime.toLocaleDateString('en-US', { weekday: 'long' })}

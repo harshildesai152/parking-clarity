@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { MapContainer, TileLayer, Marker, Popup, Circle, Polyline, useMap } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
+import { useFavorites } from '../contexts/FavoritesContext'
 
 // Fix for default marker icon in react-leaflet
 delete L.Icon.Default.prototype._getIconUrl
@@ -148,6 +149,7 @@ const MapView = ({ selectedArea, currentTime, setSelectedArea, selectedCategorie
   const [route, setRoute] = useState(null)
   const [isLoadingRoute, setIsLoadingRoute] = useState(false)
   const [locationPermission, setLocationPermission] = useState('prompt') // 'prompt', 'granted', 'denied'
+  const { toggleFavorite, isFavorite } = useFavorites()
 
   useEffect(() => {
     setIsClient(true)
@@ -236,7 +238,7 @@ const MapView = ({ selectedArea, currentTime, setSelectedArea, selectedCategorie
     }
   }
 
-  const createCustomIcon = (status, isSelected = false) => {
+  const createCustomIcon = (status, isSelected = false, isFavoriteSpot = false) => {
     const color = getStatusColor(status)
     return L.divIcon({
       html: `
@@ -250,6 +252,7 @@ const MapView = ({ selectedArea, currentTime, setSelectedArea, selectedCategorie
           display: flex;
           align-items: center;
           justify-content: center;
+          position: relative;
           ${isSelected ? 'animation: pulse 2s infinite;' : ''}
         ">
           <div style="
@@ -258,6 +261,22 @@ const MapView = ({ selectedArea, currentTime, setSelectedArea, selectedCategorie
             height: ${isSelected ? '10px' : '8px'};
             border-radius: 50%;
           "></div>
+          ${isFavoriteSpot ? `
+            <div style="
+              position: absolute;
+              top: -8px;
+              right: -8px;
+              background-color: #fbbf24;
+              width: 16px;
+              height: 16px;
+              border-radius: 50%;
+              border: 2px solid white;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              font-size: 10px;
+            ">⭐</div>
+          ` : ''}
         </div>
         <style>
           @keyframes pulse {
@@ -383,7 +402,7 @@ const MapView = ({ selectedArea, currentTime, setSelectedArea, selectedCategorie
           <Marker
             key={area.id}
             position={area.coordinates}
-            icon={createCustomIcon(area.status, selectedArea?.id === area.id)}
+            icon={createCustomIcon(area.status, selectedArea?.id === area.id, isFavorite(area.id))}
             eventHandlers={{
               click: () => handleParkingClick(area)
             }}
@@ -407,7 +426,7 @@ const MapView = ({ selectedArea, currentTime, setSelectedArea, selectedCategorie
                   <p className="text-gray-600 text-xs mb-2">{area.description}</p>
                 )}
 
-                <div className="space-y-1">
+                <div className="space-y-1 mb-3">
                   <div className="flex items-center gap-1 text-xs text-gray-600">
                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -415,6 +434,21 @@ const MapView = ({ selectedArea, currentTime, setSelectedArea, selectedCategorie
                     {area.operatingHours}
                   </div>
                 </div>
+
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleFavorite(area);
+                  }}
+                  className={`w-full px-2 py-2 text-xs font-medium rounded-lg transition-colors flex items-center justify-center gap-1 ${
+                    isFavorite(area.id)
+                      ? 'bg-yellow-500 text-white hover:bg-yellow-600'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  <span className="text-sm">{isFavorite(area.id) ? '⭐' : '☆'}</span>
+                  {isFavorite(area.id) ? 'Favorited' : 'Add to Favorites'}
+                </button>
               </div>
             </Popup>
           </Marker>
