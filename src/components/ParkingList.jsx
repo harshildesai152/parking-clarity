@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useFavorites } from '../contexts/FavoritesContext'
 
 const staticParkingData = [
   {
@@ -386,12 +387,13 @@ const staticParkingData = [
   }
   ]
 
-  const ParkingList = ({ selectedArea, setSelectedArea, currentTime, fullWidth = false }) => {
+  const ParkingList = ({ selectedArea, setSelectedArea, currentTime, fullWidth = false, onAreaSelect }) => {
   const [availabilityModal, setAvailabilityModal] = useState(null)
   const [reportModal, setReportModal] = useState(null)
   const [reportReason, setReportReason] = useState('')
   const [reportTime, setReportTime] = useState(new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }))
   const [reportDuration, setReportDuration] = useState('')
+  const { toggleFavorite, isFavorite } = useFavorites()
   
   // Filter states
   const [selectedCategories, setSelectedCategories] = useState([])
@@ -629,6 +631,21 @@ const staticParkingData = [
             )}
 
             <div className="flex gap-2 mt-3">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleFavorite(area);
+                }}
+                className={`flex-1 px-2 py-2 text-xs font-medium rounded-lg transition-colors min-h-[36px] flex items-center justify-center gap-1 ${
+                  isFavorite(area.id)
+                    ? 'bg-yellow-500 text-white hover:bg-yellow-600'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                <span className="text-sm">{isFavorite(area.id) ? '⭐' : '☆'}</span>
+                {isFavorite(area.id) ? 'Favorited' : 'Favorite'}
+              </button>
+
               <button
                 onClick={(e) => {
                   e.stopPropagation();
