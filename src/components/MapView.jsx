@@ -69,17 +69,28 @@ const MapView = ({
   filterByAvailability = null 
 }) => {
   // Normalize parking data to match UI expectations
-  const normalizedParkingData = parkingData.map(area => ({
-    ...area,
-    id: area._id || area.id,
-    coordinates: area.location ? [area.location.lat, area.location.lng] : area.coordinates,
-    // Map "bike" to "motorcycle" in vehicleTypes
-    vehicleTypes: (area.vehicleTypes || []).map(v => v === 'bike' ? 'motorcycle' : v),
-    status: calculateStatus(area, currentTime),
-    // Ensure all required fields exist
-    distance: area.distance || 0,
-    operatingHours: area.operatingHours ? (typeof area.operatingHours === 'string' ? area.operatingHours : 'Open') : 'N/A'
-  }))
+  const normalizedParkingData = parkingData
+    .filter(area => {
+      // Filter out areas with invalid or missing coordinates
+      if (area.location && area.location.lat && area.location.lng) {
+        return true;
+      }
+      if (area.coordinates && Array.isArray(area.coordinates) && area.coordinates.length === 2) {
+        return true;
+      }
+      return false;
+    })
+    .map(area => ({
+      ...area,
+      id: area._id || area.id,
+      coordinates: area.location ? [area.location.lat, area.location.lng] : area.coordinates,
+      // Map "bike" to "motorcycle" in vehicleTypes
+      vehicleTypes: (area.vehicleTypes || []).map(v => v === 'bike' ? 'motorcycle' : v),
+      status: calculateStatus(area, currentTime),
+      // Ensure all required fields exist
+      distance: area.distance || 0,
+      operatingHours: area.operatingHours ? (typeof area.operatingHours === 'string' ? area.operatingHours : 'Open') : 'N/A'
+    }))
 
   const [userLocation, setUserLocation] = useState([21.2000, 72.8400]) // Default: Surat city center
   const [isClient, setIsClient] = useState(false)
@@ -367,15 +378,21 @@ const MapView = ({
 
             return true
           })
-          .map((area) => (
-          <Marker
-            key={area.id}
-            position={area.coordinates}
-            icon={createCustomIcon(area.status, selectedArea?.id === area.id, isFavorite(area.id))}
-            eventHandlers={{
-              click: () => handleParkingClick(area)
-            }}
-          >
+          .map((area) => {
+            // Additional safety check before rendering Marker
+            if (!area.coordinates || !Array.isArray(area.coordinates) || area.coordinates.length !== 2) {
+              return null;
+            }
+            
+            return (
+              <Marker
+                key={area.id}
+                position={area.coordinates}
+                icon={createCustomIcon(area.status, selectedArea?.id === area.id, isFavorite(area.id))}
+                eventHandlers={{
+                  click: () => handleParkingClick(area)
+                }}
+              >
             <Popup>
               <div className="text-xs sm:text-sm max-w-[200px] sm:max-w-xs p-1 sm:p-2">
                 <div className="font-semibold text-gray-900 mb-1 text-sm sm:text-base">{area.name}</div>
@@ -421,7 +438,8 @@ const MapView = ({
               </div>
             </Popup>
           </Marker>
-        ))}
+            );
+          })}
       </MapContainer>
 
       {/* Map Legend */}

@@ -16,7 +16,7 @@ function App() {
   const [listViewTab, setListViewTab] = useState('parking') // 'parking' or 'reports' for list view
   const [sidebarView, setSidebarView] = useState('parking') // 'parking' or 'favorites'
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const [selectedCategories, setSelectedCategories] = useState(['Hospital', 'Market', 'Shopping Mall', 'Office'])
+  const [selectedCategories, setSelectedCategories] = useState([]) // Start with no categories selected
   const [selectedVehicleTypes, setSelectedVehicleTypes] = useState([])
   const [parkingDuration, setParkingDuration] = useState('')
   const [selectedParkingTypes, setSelectedParkingTypes] = useState([])
@@ -25,13 +25,93 @@ function App() {
   const [searchLocation, setSearchLocation] = useState('')
   const [userLocation, setUserLocation] = useState(null)
   const [parkingData, setParkingData] = useState([])
+  const [allParkingData, setAllParkingData] = useState([]) // Separate state for all parking data
   const [isLoading, setIsLoading] = useState(true)
+  const [searchQuery, setSearchQuery] = useState('') // Search query for parking areas
+
+  // Clear all filters function
+  const clearAllFilters = () => {
+    setSelectedCategories([]) // Clear all categories instead of default selection
+    setSelectedVehicleTypes([])
+    setSelectedParkingTypes([])
+    setParkingDuration('')
+    setFilterByAvailability(null)
+    setSearchRadius(1000)
+    setSearchLocation('')
+    setUserLocation(null)
+    setSearchQuery('') // Clear search query
+  }
+
+  // Fetch all parking data without any filters
+  const fetchAllParkingData = async () => {
+    try {
+      setIsLoading(true)
+      const response = await fetch('http://localhost:5000/api/parking')
+      const result = await response.json()
+      if (result && result.data) {
+        setAllParkingData(result.data)
+      }
+    } catch (error) {
+      console.error('Error fetching all parking data:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   useEffect(() => {
     const fetchParkingData = async () => {
       try {
         setIsLoading(true)
-        const response = await fetch('http://localhost:5000/api/parking')
+        
+        // Build query parameters
+        const params = new URLSearchParams()
+        
+        // Add simulate parameters if not in live mode, or current time if in live mode
+        if (!isLiveMode) {
+          const timeString = currentTime.toTimeString().slice(0, 5) // HH:MM format
+          const dayString = currentTime.toLocaleDateString('en-US', { weekday: 'long' })
+          
+          params.append('SIMULATE_TIME', timeString)
+          params.append('SIMULATE_DAY', dayString)
+        } else {
+          // In live mode, send current time and day
+          const now = new Date()
+          const timeString = now.toTimeString().slice(0, 5) // HH:MM format
+          const dayString = now.toLocaleDateString('en-US', { weekday: 'long' })
+          
+          params.append('SIMULATE_TIME', timeString)
+          params.append('SIMULATE_DAY', dayString)
+        }
+        
+        // Add other filter parameters
+        if (searchQuery) {
+          params.append('search', searchQuery)
+        }
+        if (selectedCategories.length > 0) {
+          params.append('category', selectedCategories.join(','))
+        }
+        if (selectedVehicleTypes.length > 0) {
+          params.append('vehicleType', selectedVehicleTypes.join(','))
+        }
+        if (selectedParkingTypes.length > 0) {
+          params.append('parkingType', selectedParkingTypes.join(','))
+        }
+        if (parkingDuration) {
+          params.append('minDuration', parkingDuration)
+        }
+        if (filterByAvailability) {
+          params.append('available', filterByAvailability === 'available' ? 'true' : 'false')
+        }
+        if (searchRadius) {
+          params.append('radius', searchRadius)
+        }
+        if (userLocation) {
+          params.append('lat', userLocation[0])
+          params.append('lng', userLocation[1])
+        }
+        
+        const url = `http://localhost:5000/api/parking${params.toString() ? '?' + params.toString() : ''}`
+        const response = await fetch(url)
         const result = await response.json()
         if (result && result.data) {
           setParkingData(result.data)
@@ -44,7 +124,32 @@ function App() {
     }
 
     fetchParkingData()
-  }, [])
+  }, [currentTime, isLiveMode, selectedCategories, selectedVehicleTypes, selectedParkingTypes, parkingDuration, filterByAvailability, searchRadius, userLocation, searchQuery])
+
+  // Auto-refresh data every minute when in live mode
+  useEffect(() => {
+    let interval;
+    if (isLiveMode) {
+      interval = setInterval(() => {
+        // This will trigger the fetchParkingData effect
+        const now = new Date()
+        setCurrentTime(now)
+      }, 60000) // Refresh every minute
+    }
+    
+    return () => {
+      if (interval) {
+        clearInterval(interval)
+      }
+    }
+  }, [isLiveMode])
+
+  // Fetch all parking data when component mounts or when switching views
+  useEffect(() => {
+    if (activeTab === 'list' || listViewTab === 'parking') {
+      fetchAllParkingData()
+    }
+  }, [activeTab, listViewTab])
 
   return (
     <ReportsProvider>
@@ -151,16 +256,17 @@ function App() {
           onClick={() => setIsMobileMenuOpen(false)}
         >
           <div
-            className="fixed left-0 top-14 bottom-0 w-80 max-w-[85vw] bg-white shadow-xl overflow-y-auto"
+            className="fixed left-0 top-0 bottom-0 w-80 max-w-[85vw] bg-white shadow-xl overflow-y-auto"
             style={{ zIndex: 10000 }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="p-4 border-b border-gray-200">
+            {/* Mobile Menu Header */}
+            <div className="sticky top-0 bg-white border-b border-gray-200 p-4 z-10">
               <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-gray-900">Menu</h2>
+                <h2 className="text-lg font-semibold text-gray-900">Parking Filters</h2>
                 <button
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="p-1 rounded-md text-gray-400 hover:text-gray-600"
+                  className="p-2 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -169,17 +275,51 @@ function App() {
               </div>
             </div>
 
-            <div className="p-4">
+            <div className="p-4 space-y-4">
               <ClarityTime
                 currentTime={currentTime}
                 setCurrentTime={setCurrentTime}
                 isLiveMode={isLiveMode}
                 setIsLiveMode={setIsLiveMode}
               />
+
+              {/* Search Section */}
+              <div className="space-y-2">
+                <h3 className="text-sm font-semibold text-gray-900">Search Parking</h3>
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Search name or type..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full px-4 py-3 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-base min-h-[44px]"
+                  />
+                  <svg className="absolute left-3 top-3.5 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            {/* Clear Filters Button - Mobile */}
+            <div className="px-4 pb-4">
+              <button
+                onClick={() => {
+                  clearAllFilters()
+                  setIsMobileMenuOpen(false)
+                }}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium text-sm shadow-md hover:shadow-lg min-h-[44px]"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                Clear All Filters
+              </button>
             </div>
 
             {/* Tab Navigation */}
-            <div className="px-4 pb-4">
+            <div className="px-4 pb-4 border-t border-gray-200">
+              <h3 className="text-sm font-semibold text-gray-900 mb-3">View Mode</h3>
               <div className="flex bg-gray-100 rounded-lg p-1">
                 <button
                   onClick={() => {
@@ -192,7 +332,7 @@ function App() {
                       : 'text-gray-600 hover:text-gray-900'
                   }`}
                 >
-                  Map Explorer
+                  🗺️ Map
                 </button>
                 <button
                   onClick={() => {
@@ -205,7 +345,7 @@ function App() {
                       : 'text-gray-600 hover:text-gray-900'
                   }`}
                 >
-                  List Only
+                  📋 List
                 </button>
               </div>
             </div>
@@ -349,6 +489,8 @@ function App() {
                   <input
                     type="text"
                     placeholder="Search name or type..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
                     className="w-full px-4 py-3 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-base min-h-[44px]"
                   />
                   <svg className="absolute left-3 top-3.5 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -369,6 +511,9 @@ function App() {
                 parkingDuration={parkingDuration}
                 filterByAvailability={filterByAvailability}
                 onAreaSelect={() => setIsMobileMenuOpen(false)}
+                clearAllFilters={clearAllFilters}
+                searchQuery={searchQuery}
+                setSearchQuery={setSearchQuery}
               />
             </div>
           </div>
@@ -411,6 +556,21 @@ function App() {
                 ⭐ Favorites
               </button>
             </div>
+
+            {/* Clear Filters Button */}
+            {sidebarView === 'parking' && (
+              <div className="mb-4">
+                <button
+                  onClick={clearAllFilters}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium text-sm shadow-md hover:shadow-lg"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                  Clear All Filters
+                </button>
+              </div>
+            )}
 
             {sidebarView === 'parking' && (
               <div className="flex bg-gray-100 rounded-lg p-1">
@@ -629,6 +789,8 @@ function App() {
                     <input
                       type="text"
                       placeholder="Search name or type..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
                       className="w-full px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                     <svg className="absolute left-3 top-2.5 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -649,6 +811,9 @@ function App() {
                   parkingDuration={parkingDuration}
                   filterByAvailability={filterByAvailability}
                   onAreaSelect={() => setIsMobileMenuOpen(false)}
+                  clearAllFilters={clearAllFilters}
+                  searchQuery={searchQuery}
+                  setSearchQuery={setSearchQuery}
                 />
               </>
             ) : (
@@ -704,7 +869,7 @@ function App() {
                 {/* Tab Content */}
                 {listViewTab === 'parking' ? (
                   <ParkingList 
-                    parkingData={parkingData}
+                    parkingData={allParkingData} // Use allParkingData for list view
                     isLoading={isLoading}
                     selectedArea={selectedArea}
                     setSelectedArea={setSelectedArea}
@@ -715,6 +880,10 @@ function App() {
                     parkingDuration={parkingDuration}
                     filterByAvailability={filterByAvailability}
                     fullWidth={true}
+                    clearAllFilters={clearAllFilters}
+                    searchQuery={searchQuery}
+                    setSearchQuery={setSearchQuery}
+                    showAllData={true} // Show all data without filters in list view
                   />
                 ) : (
                   <ReportsList />

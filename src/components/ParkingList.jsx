@@ -17,19 +17,36 @@ import { calculateStatus } from '../utils/statusUtils'
   selectedVehicleTypes = [],
   selectedParkingTypes = [],
   parkingDuration = '',
-  filterByAvailability = null
+  filterByAvailability = null,
+  clearAllFilters,
+  searchQuery = '',
+  setSearchQuery,
+  showAllData = false // New prop to show all data without filters
 }) => {
-  // Normalize parking data
-  const normalizedParkingData = parkingData.map(area => ({
-    ...area,
-    id: area._id || area.id,
-    coordinates: area.location ? [area.location.lat, area.location.lng] : area.coordinates,
-    // Map "bike" to "motorcycle" in vehicleTypes
-    vehicleTypes: (area.vehicleTypes || []).map(v => v === 'bike' ? 'motorcycle' : v),
-    status: calculateStatus(area, currentTime),
-    distance: area.distance || 0,
-    operatingHours: area.operatingHours ? (typeof area.operatingHours === 'string' ? area.operatingHours : 'Open') : 'N/A'
-  }))
+  // Normalize parking data to match UI expectations
+  const normalizedParkingData = parkingData
+    .filter(area => {
+      // Filter out areas with invalid or missing coordinates
+      if (area.location && area.location.lat && area.location.lng) {
+        return true;
+      }
+      if (area.coordinates && Array.isArray(area.coordinates) && area.coordinates.length === 2) {
+        return true;
+      }
+      return false;
+    })
+    .map(area => ({
+      ...area,
+      id: area._id || area.id,
+      coordinates: area.location ? [area.location.lat, area.location.lng] : area.coordinates,
+      // Map "bike" to "motorcycle" in vehicleTypes
+      vehicleTypes: (area.vehicleTypes || []).map(v => v === 'bike' ? 'motorcycle' : v),
+      status: calculateStatus(area, currentTime),
+      // Ensure all required fields exist
+      distance: area.distance || 0,
+      // Keep operatingHours as object, don't convert to string
+      operatingHours: area.operatingHours || {}
+    }))
   const [availabilityModal, setAvailabilityModal] = useState(null)
   const [reportModal, setReportModal] = useState(null)
   const [reportReason, setReportReason] = useState('')
@@ -155,7 +172,8 @@ import { calculateStatus } from '../utils/statusUtils'
   }
 
   // Filter parking data based on selected categories, vehicle types, parking types, duration, and availability
-  const filteredData = normalizedParkingData.filter(area => {
+  // Skip all filters if showAllData is true
+  const filteredData = showAllData ? normalizedParkingData : normalizedParkingData.filter(area => {
     // Category filter - map API category to UI filter
     const uiCategory = area.category ? area.category.charAt(0).toUpperCase() + area.category.slice(1) : ''
     if (selectedCategories.length > 0 && !selectedCategories.includes(uiCategory) && !selectedCategories.includes(area.category)) {
@@ -234,7 +252,7 @@ import { calculateStatus } from '../utils/statusUtils'
                 <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <span className="text-gray-600">Operating: {area.operatingHours}</span>
+                <span className="text-gray-600">Operating: {area.operatingHours && typeof area.operatingHours === 'object' ? 'Daily hours available' : 'N/A'}</span>
               </div>
 
               {area.capacity && (
@@ -251,8 +269,10 @@ import { calculateStatus } from '../utils/statusUtils'
                     {area.vehicleTypes && area.vehicleTypes.length > 0 && (
                       <span className="text-xs ml-1">
                         ({area.vehicleTypes.map(type => {
-                          const count = area.capacity[type];
-                          return count ? `${type}: ${count}` : type;
+                          const capacityInfo = area.capacity[type];
+                          return capacityInfo && typeof capacityInfo === 'object' 
+                            ? `${type}: ${capacityInfo.available || capacityInfo.total || 0}`
+                            : type;
                         }).join(', ')})
                       </span>
                     )}
@@ -453,6 +473,24 @@ import { calculateStatus } from '../utils/statusUtils'
 
 // Availability Detail Modal Component
 const AvailabilityDetailModal = ({ parkingArea, onClose }) => {
+  // Helper function to format time from 24-hour to 12-hour format
+  const formatTime = (time) => {
+    if (!time) return '';
+    const [hours, minutes] = time.split(':');
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const displayHour = hour % 12 || 12;
+    return `${displayHour}:${minutes} ${ampm}`;
+  };
+
+  // Get current day
+  const getCurrentDay = () => {
+    const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    return days[new Date().getDay()];
+  };
+
+  const currentDay = getCurrentDay();
+
   const daysOfWeek = [
     { key: 'sunday', name: 'Sun', shortName: 'S' },
     { key: 'monday', name: 'Mon', shortName: 'M' },
@@ -577,7 +615,7 @@ const AvailabilityDetailModal = ({ parkingArea, onClose }) => {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Operating Hours:</span>
-                    <span className="font-medium text-gray-900">{parkingArea.operatingHours}</span>
+                    <span className="font-medium text-gray-900">{parkingArea.operatingHours && typeof parkingArea.operatingHours === 'object' ? 'View daily hours' : 'N/A'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Max Duration:</span>
@@ -594,8 +632,8 @@ const AvailabilityDetailModal = ({ parkingArea, onClose }) => {
                     <span className="font-medium text-blue-600">{parkingArea.capacity?.total || Object.values(parkingArea.capacity || {}).reduce((sum, val) => sum + (typeof val === 'number' ? val : 0), 0)} spots</span>
                   </div>
                   {parkingArea.vehicleTypes?.map(vehicleType => {
-                    const count = parkingArea.capacity?.[vehicleType];
-                    if (!count) return null;
+                    const capacityInfo = parkingArea.capacity?.[vehicleType];
+                    if (!capacityInfo || typeof capacityInfo !== 'object') return null;
 
                     const vehicleIcons = {
                       car: '🚗',
@@ -611,7 +649,7 @@ const AvailabilityDetailModal = ({ parkingArea, onClose }) => {
                           <span>{vehicleIcons[vehicleType] || '🚗'}</span>
                           {vehicleType.charAt(0).toUpperCase() + vehicleType.slice(1)}:
                         </span>
-                        <span className="font-medium text-gray-900">{count} spots</span>
+                        <span className="font-medium text-gray-900">{capacityInfo.available || capacityInfo.total || 0} spots</span>
                       </div>
                     );
                   })}
@@ -663,63 +701,149 @@ const AvailabilityDetailModal = ({ parkingArea, onClose }) => {
           </div>
 
           {/* Day-wise Availability */}
-          <div className="p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Daily Availability</h3>
-            <div className="grid gap-3">
-              {daysOfWeek.map((day) => {
+          <div className="p-6 bg-gradient-to-br from-gray-50 to-blue-50">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                Daily Availability
+              </h3>
+              <div className="text-sm text-gray-500">
+                {weeklyStats.festivalDays > 0 && (
+                  <span className="inline-flex items-center gap-1 bg-orange-100 text-orange-700 px-2 py-1 rounded-full text-xs font-medium">
+                    🎉 {weeklyStats.festivalDays} Festival{weeklyStats.festivalDays > 1 ? 's' : ''}
+                  </span>
+                )}
+              </div>
+            </div>
+            
+            <div className="grid gap-4">
+              {daysOfWeek.map((day, index) => {
                 const dayData = parkingArea.dayWiseAvailability?.[day.key] || { status: 'available', isFestival: false }
+                const isWeekend = day.key === 'saturday' || day.key === 'sunday';
+                
                 return (
-                  <div key={day.key} className={`rounded-xl p-4 border-2 transition-all hover:shadow-md ${
+                  <div key={day.key} className={`relative overflow-hidden rounded-2xl border transition-all duration-300 hover:shadow-lg hover:scale-[1.02] ${
                     dayData.isFestival
-                      ? 'bg-gradient-to-r from-yellow-50 to-orange-50 border-yellow-300'
-                      : 'bg-white border-gray-200'
+                      ? 'bg-gradient-to-r from-yellow-50 via-orange-50 to-yellow-50 border-yellow-300 shadow-md'
+                      : isWeekend
+                      ? 'bg-gradient-to-r from-purple-50 via-pink-50 to-purple-50 border-purple-200'
+                      : 'bg-white border-gray-200 shadow-sm'
                   }`}>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        {/* Day indicator */}
-                        <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg ${
-                          dayData.status === 'parked' ? 'bg-green-500' : 'bg-gray-400'
-                        }`}>
-                          {day.shortName}
+                    {/* Decorative corner accent */}
+                    <div className={`absolute top-0 left-0 w-20 h-20 ${
+                      dayData.isFestival
+                        ? 'bg-gradient-to-br from-yellow-200 to-orange-200'
+                        : isWeekend
+                        ? 'bg-gradient-to-br from-purple-200 to-pink-200'
+                        : 'bg-gradient-to-br from-blue-100 to-cyan-100'
+                    } opacity-30 rounded-full -translate-x-10 -translate-y-10`}></div>
+                    
+                    <div className="relative p-5">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                          {/* Enhanced Day indicator */}
+                          <div className={`relative w-14 h-14 rounded-2xl flex items-center justify-center text-white font-bold text-lg shadow-lg transform transition-transform ${
+                            dayData.status === 'parked' ? 'bg-gradient-to-br from-green-500 to-green-600 scale-110' : 
+                            isWeekend ? 'bg-gradient-to-br from-purple-500 to-pink-500' :
+                            'bg-gradient-to-br from-blue-500 to-cyan-500'
+                          }`}>
+                            {day.shortName}
+                            {dayData.isFestival && (
+                              <span className="absolute -top-1 -right-1 text-xs">🎉</span>
+                            )}
+                          </div>
+
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <h4 className="font-bold text-gray-900 text-lg">{day.name}</h4>
+                              {day.key === currentDay && (
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-md">
+                                  Today
+                                </span>
+                              )}
+                              {isWeekend && (
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700 border border-purple-200">
+                                  Weekend
+                                </span>
+                              )}
+                            </div>
+                            
+                            {/* Enhanced Operating Hours */}
+                            <div className="mt-2">
+                              {(() => {
+                                const dayHours = parkingArea.operatingHours?.[day.key] || [];
+                                
+                                if (dayHours.length === 0) {
+                                  return (
+                                    <div className="flex items-center gap-2">
+                                      <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                      </svg>
+                                      <span className="text-sm text-gray-500 font-medium">No hours set</span>
+                                    </div>
+                                  );
+                                }
+                                
+                                return (
+                                  <div className="flex flex-wrap gap-2">
+                                    {dayHours.map((slot, index) => (
+                                      <div key={index} className="group relative">
+                                        <span className="inline-flex items-center gap-1 bg-gradient-to-r from-blue-500 to-cyan-500 text-white px-3 py-1.5 rounded-full text-xs font-medium shadow-md transition-all duration-200 hover:shadow-lg hover:scale-105">
+                                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                          </svg>
+                                          {formatTime(slot.open)} - {formatTime(slot.close)}
+                                        </span>
+                                        {/* Tooltip on hover */}
+                                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap pointer-events-none">
+                                          {slot.isOpen ? 'Open' : 'Closed'}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                );
+                              })()}
+                            </div>
+                            
+                            {dayData.isFestival && (
+                              <div className="mt-2 inline-flex items-center gap-2 bg-gradient-to-r from-yellow-100 to-orange-100 px-3 py-1.5 rounded-full border border-yellow-300">
+                                <span className="text-lg">🎉</span>
+                                <span className="text-sm font-semibold text-orange-800">{dayData.festivalName}</span>
+                              </div>
+                            )}
+                          </div>
                         </div>
 
-                        <div>
-                          <h4 className="font-semibold text-gray-900 text-lg">{day.name}</h4>
-                          {dayData.isFestival && (
-                            <div className="flex items-center gap-2 mt-1">
-                              <span className="text-lg">🎉</span>
-                              <span className="text-sm font-medium text-orange-700">{dayData.festivalName}</span>
+                        <div className="text-right">
+                          <div className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold shadow-md transition-all duration-200 hover:shadow-lg hover:scale-105 ${
+                            dayData.status === 'parked' 
+                              ? 'bg-gradient-to-r from-green-500 to-green-600 text-white' 
+                              : 'bg-gradient-to-r from-gray-400 to-gray-500 text-white'
+                          }`}>
+                            {getStatusIcon(dayData.status)}
+                            {dayData.status === 'parked' ? 'Parked' : 'Available'}
+                          </div>
+
+                          {dayData.status === 'parked' && (
+                            <div className="mt-3 text-sm text-gray-600 space-y-1">
+                              <div className="flex items-center gap-1 font-medium">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                {dayData.startTime} - {dayData.endTime}
+                              </div>
+                              <div className="text-gray-500">{dayData.duration}</div>
                             </div>
                           )}
                         </div>
                       </div>
-
-                      <div className="text-right">
-                        <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold shadow-md ${getStatusColor(dayData.status)}`}>
-                          {getStatusIcon(dayData.status)}
-                          {dayData.status === 'parked' ? 'Parked' : 'Available'}
-                        </div>
-
-                        {dayData.status === 'parked' && (
-                          <div className="mt-2 text-sm text-gray-600">
-                            <div className="font-medium">{dayData.startTime} - {dayData.endTime}</div>
-                            <div className="text-gray-500">{dayData.duration}</div>
-                          </div>
-                        )}
-
-                        {dayData.isFestival && (
-                          <div className="mt-2">
-                            <span className={`text-sm font-semibold ${
-                              dayData.festivalAvailable ? 'text-green-600' : 'text-red-600'
-                            }`}>
-                              {dayData.festivalAvailable ? '✓ Festival Available' : '✗ Festival Blocked'}
-                            </span>
-                          </div>
-                        )}
-                      </div>
                     </div>
                   </div>
-                )
+                );
               })}
             </div>
           </div>
@@ -728,6 +852,9 @@ const AvailabilityDetailModal = ({ parkingArea, onClose }) => {
           {parkingArea.festivalAvailability && (
             <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border-t border-yellow-200 p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
                 <span className="text-2xl">🎊</span>
                 Festival Special Hours
               </h3>
