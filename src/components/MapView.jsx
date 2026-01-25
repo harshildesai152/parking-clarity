@@ -89,7 +89,7 @@ const MapView = ({
       status: calculateStatus(area, currentTime),
       // Ensure all required fields exist
       distance: area.distance || 0,
-      operatingHours: area.operatingHours ? (typeof area.operatingHours === 'string' ? area.operatingHours : 'Open') : 'N/A'
+      operatingHours: area.operatingHours ? (typeof area.operatingHours === 'string' ? area.operatingHours : '24/7') : 'N/A'
     }))
 
   const [userLocation, setUserLocation] = useState([21.2000, 72.8400]) // Default: Surat city center
@@ -417,7 +417,7 @@ const MapView = ({
                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    {typeof area.operatingHours === 'string' ? area.operatingHours : '24/7'}
+                    {area.operatingHours || '24/7'}
                   </div>
                 </div>
 
@@ -466,7 +466,7 @@ const MapView = ({
       </div>
 
       {/* Selected Area Info */}
-      {selectedArea && (
+      {selectedArea && !selectedArea.isCurrentLocation && (
         <div className="absolute bottom-2 sm:bottom-4 left-2 sm:left-4 right-2 sm:right-auto bg-white rounded-lg shadow-lg p-3 sm:p-4 max-w-sm z-[1000]">
           <div className="flex items-start justify-between mb-2">
             <h3 className="font-semibold text-gray-900 text-sm sm:text-base pr-2">{selectedArea.name}</h3>

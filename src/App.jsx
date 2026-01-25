@@ -261,12 +261,18 @@ function App() {
             onClick={(e) => e.stopPropagation()}
           >
             {/* Mobile Menu Header */}
-            <div className="sticky top-0 bg-white border-b border-gray-200 p-4 z-10">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-gray-900">Parking Filters</h2>
+            <div className="sticky top-0 bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-800 p-6 text-white z-10">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-xl font-bold flex items-center gap-2">
+                    <span className="text-2xl">🅿️</span>
+                    Parking Filters
+                  </h2>
+                  <p className="text-blue-100 text-sm mt-1">Find your perfect parking spot</p>
+                </div>
                 <button
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="p-2 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
+                  className="bg-white/20 backdrop-blur-sm rounded-lg p-3 text-white hover:bg-white/30 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -285,16 +291,23 @@ function App() {
 
               {/* Search Section */}
               <div className="space-y-2">
-                <h3 className="text-sm font-semibold text-gray-900">Search Parking</h3>
+                <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                  <div className="w-7 h-7 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
+                    <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  </div>
+                  Search Parking Areas
+                </h3>
                 <div className="relative">
                   <input
                     type="text"
                     placeholder="Search name or type..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full px-4 py-3 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-base min-h-[44px]"
+                    className="w-full px-4 py-3 pl-12 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base shadow-sm transition-all duration-200"
                   />
-                  <svg className="absolute left-3 top-3.5 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="absolute left-4 top-3.5 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
                 </div>
@@ -308,9 +321,9 @@ function App() {
                   clearAllFilters()
                   setIsMobileMenuOpen(false)
                 }}
-                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium text-sm shadow-md hover:shadow-lg min-h-[44px]"
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-red-500 to-rose-600 text-white rounded-xl hover:from-red-600 hover:to-rose-700 transition-all duration-200 font-semibold text-sm shadow-lg hover:shadow-xl transform hover:scale-105"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                 </svg>
                 Clear All Filters
@@ -319,68 +332,93 @@ function App() {
 
             {/* Tab Navigation */}
             <div className="px-4 pb-4 border-t border-gray-200">
-              <h3 className="text-sm font-semibold text-gray-900 mb-3">View Mode</h3>
-              <div className="flex bg-gray-100 rounded-lg p-1">
+              <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                <div className="w-7 h-7 bg-gradient-to-r from-purple-500 to-indigo-600 rounded-lg flex items-center justify-center">
+                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  </svg>
+                </div>
+                View Mode
+              </h3>
+              <div className="flex bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl p-1 shadow-inner">
                 <button
                   onClick={() => {
                     setActiveTab('map')
                     setIsMobileMenuOpen(false)
                   }}
-                  className={`flex-1 py-3 px-4 rounded-md text-sm font-medium transition-colors min-h-[44px] ${
+                  className={`flex-1 py-3 px-4 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2 ${
                     activeTab === 'map'
-                      ? 'bg-white text-blue-600 shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900'
+                      ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg transform scale-105'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
                   }`}
                 >
-                  🗺️ Map
+                  <span className="text-lg">🗺️</span>
+                  Map
                 </button>
                 <button
                   onClick={() => {
                     setActiveTab('list')
                     setIsMobileMenuOpen(false)
                   }}
-                  className={`flex-1 py-3 px-4 rounded-md text-sm font-medium transition-colors min-h-[44px] ${
+                  className={`flex-1 py-3 px-4 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2 ${
                     activeTab === 'list'
-                      ? 'bg-white text-blue-600 shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900'
+                      ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg transform scale-105'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
                   }`}
                 >
-                  📋 List
+                  <span className="text-lg">📋</span>
+                  List
                 </button>
               </div>
             </div>
 
             {/* Category Filter */}
             <div className="px-4 pb-4">
-              <div className="mb-4">
-                <h3 className="text-sm font-semibold text-gray-900 mb-2">Filter by Availability</h3>
-                <div className="flex flex-wrap gap-2">
+              <div className="mb-6">
+                <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                  <div className="w-7 h-7 bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg flex items-center justify-center">
+                    <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  Filter by Availability
+                </h3>
+                <div className="flex flex-wrap gap-3">
                   <button
                     onClick={() => setFilterByAvailability(filterByAvailability === 'available' ? null : 'available')}
-                    className={`px-3 py-2 rounded-full text-xs font-medium transition-colors ${
+                    className={`px-4 py-2 rounded-full text-sm font-semibold transition-all duration-200 flex items-center gap-2 shadow-md hover:shadow-lg transform hover:scale-105 ${
                       filterByAvailability === 'available'
-                        ? 'bg-green-500 text-white'
-                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white'
+                        : 'bg-white border-2 border-gray-200 text-gray-700 hover:border-green-300'
                     }`}
                   >
-                    ✅ Available
+                    <span className="text-base">✅</span>
+                    Available
                   </button>
                   <button
                     onClick={() => setFilterByAvailability(filterByAvailability === 'unavailable' ? null : 'unavailable')}
-                    className={`px-3 py-2 rounded-full text-xs font-medium transition-colors ${
+                    className={`px-4 py-2 rounded-full text-sm font-semibold transition-all duration-200 flex items-center gap-2 shadow-md hover:shadow-lg transform hover:scale-105 ${
                       filterByAvailability === 'unavailable'
-                        ? 'bg-red-500 text-white'
-                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        ? 'bg-gradient-to-r from-red-500 to-rose-600 text-white'
+                        : 'bg-white border-2 border-gray-200 text-gray-700 hover:border-red-300'
                     }`}
                   >
-                    ❌ Unavailable
+                    <span className="text-base">❌</span>
+                    Unavailable
                   </button>
                 </div>
               </div>
 
-              <div className="mb-4">
-                <h3 className="text-sm font-semibold text-gray-900 mb-2">Filter by Category</h3>
-                <div className="flex flex-wrap gap-2">
+              <div className="mb-6">
+                <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                  <div className="w-7 h-7 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
+                    <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                    </svg>
+                  </div>
+                  Filter by Category
+                </h3>
+                <div className="flex flex-wrap gap-3">
                   {['Hospital', 'Market', 'Shopping Mall', 'Office'].map((category) => (
                     <button
                       key={category}
@@ -391,12 +429,16 @@ function App() {
                           setSelectedCategories([...selectedCategories, category])
                         }
                       }}
-                      className={`px-3 py-2 rounded-full text-xs font-medium transition-colors min-h-[36px] ${
+                      className={`px-4 py-2 rounded-full text-sm font-semibold transition-all duration-200 flex items-center gap-2 shadow-md hover:shadow-lg transform hover:scale-105 ${
                         selectedCategories.includes(category)
-                          ? 'bg-blue-500 text-white'
-                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                          ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white'
+                          : 'bg-white border-2 border-gray-200 text-gray-700 hover:border-blue-300'
                       }`}
                     >
+                      {category === 'Hospital' && '🏥'}
+                      {category === 'Market' && '🛒'}
+                      {category === 'Shopping Mall' && '🏬'}
+                      {category === 'Office' && '🏢'}
                       {category}
                     </button>
                   ))}
@@ -522,7 +564,25 @@ function App() {
 
       <div className="flex flex-1 overflow-hidden">
         {/* Desktop Sidebar */}
-        <div className="hidden lg:flex lg:w-96 lg:bg-white lg:border-r lg:border-gray-200 lg:overflow-y-auto lg:flex-col">
+        <div className="hidden lg:flex lg:w-96 lg:bg-gradient-to-b lg:from-white lg:to-gray-50 lg:border-r lg:border-gray-200 lg:overflow-y-auto lg:flex-col lg:shadow-xl">
+          {/* Beautiful Sidebar Header */}
+          <div className="bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-800 p-6 text-white">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h1 className="text-2xl font-bold flex items-center gap-2">
+                  <span className="text-3xl">🅿️</span>
+                  Parking Clarity
+                </h1>
+                <p className="text-blue-100 text-sm mt-1">Find your perfect parking spot</p>
+              </div>
+              <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3">
+                <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                </svg>
+              </div>
+            </div>
+          </div>
+
           <div className="p-4">
             <ClarityTime 
               currentTime={currentTime}
@@ -534,37 +594,39 @@ function App() {
           
           {/* Tab Navigation */}
           <div className="px-4 pb-4">
-            <div className="flex bg-gray-100 rounded-lg p-1 mb-4">
+            <div className="flex bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl p-1 mb-4 shadow-inner">
               <button
                 onClick={() => setSidebarView('parking')}
-                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                className={`flex-1 py-3 px-4 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2 ${
                   sidebarView === 'parking'
-                    ? 'bg-white text-blue-600 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
+                    ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg transform scale-105'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
                 }`}
               >
-                🅿️ Parking
+                <span className="text-lg">🅿️</span>
+                Parking
               </button>
               <button
                 onClick={() => setSidebarView('favorites')}
-                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                className={`flex-1 py-3 px-4 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2 ${
                   sidebarView === 'favorites'
-                    ? 'bg-white text-blue-600 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
+                    ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg transform scale-105'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
                 }`}
               >
-                ⭐ Favorites
+                <span className="text-lg">⭐</span>
+                Favorites
               </button>
             </div>
 
             {/* Clear Filters Button */}
             {sidebarView === 'parking' && (
-              <div className="mb-4">
+              <div className="mb-6">
                 <button
                   onClick={clearAllFilters}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium text-sm shadow-md hover:shadow-lg"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-red-500 to-rose-600 text-white rounded-xl hover:from-red-600 hover:to-rose-700 transition-all duration-200 font-semibold text-sm shadow-lg hover:shadow-xl transform hover:scale-105"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                   </svg>
                   Clear All Filters
@@ -637,50 +699,85 @@ function App() {
                           if (navigator.geolocation) {
                             navigator.geolocation.getCurrentPosition(
                               (position) => {
-                                setUserLocation([position.coords.latitude, position.coords.longitude])
+                                const userCoords = [position.coords.latitude, position.coords.longitude]
+                                setUserLocation(userCoords)
                                 setSearchLocation('Current Location')
+                                
+                                // Switch to map view and close mobile menu if open
+                                setActiveTab('map')
+                                setIsMobileMenuOpen(false)
+                                
+                                // Set user location as selected area to trigger map zoom
+                                setSelectedArea({
+                                  id: 'current-location',
+                                  name: 'Your Current Location',
+                                  coordinates: userCoords,
+                                  category: 'Location',
+                                  isCurrentLocation: true // Flag to identify current location
+                                })
+                                
+                                // Clear selected area after a short delay to hide popup
+                                setTimeout(() => {
+                                  setSelectedArea(null)
+                                }, 2000) // Clear after 2 seconds
                               },
                               (error) => console.error('Location error:', error)
                             )
                           }
                         }}
-                        className="px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 transition-colors"
+                        className="px-3 py-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white text-sm rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105"
                       >
-                        📍 Current
+                        📍 Current Location
                       </button>
                     </div>
                   </div>
                 </div>
 
-                <div className="mb-4">
-                  <h3 className="text-sm font-semibold text-gray-900 mb-2">Filter by Availability</h3>
-                  <div className="flex flex-wrap gap-2">
+                <div className="mb-6">
+                  <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <div className="w-7 h-7 bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg flex items-center justify-center">
+                      <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    Filter by Availability
+                  </h3>
+                  <div className="flex flex-wrap gap-3">
                     <button
                       onClick={() => setFilterByAvailability(filterByAvailability === 'available' ? null : 'available')}
-                      className={`px-3 py-2 rounded-full text-xs font-medium transition-colors ${
+                      className={`px-4 py-2 rounded-full text-sm font-semibold transition-all duration-200 flex items-center gap-2 shadow-md hover:shadow-lg transform hover:scale-105 ${
                         filterByAvailability === 'available'
-                          ? 'bg-green-500 text-white'
-                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                          ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white'
+                          : 'bg-white border-2 border-gray-200 text-gray-700 hover:border-green-300'
                       }`}
                     >
-                      ✅ Available
+                      <span className="text-base">✅</span>
+                      Available
                     </button>
                     <button
                       onClick={() => setFilterByAvailability(filterByAvailability === 'unavailable' ? null : 'unavailable')}
-                      className={`px-3 py-2 rounded-full text-xs font-medium transition-colors ${
+                      className={`px-4 py-2 rounded-full text-sm font-semibold transition-all duration-200 flex items-center gap-2 shadow-md hover:shadow-lg transform hover:scale-105 ${
                         filterByAvailability === 'unavailable'
-                          ? 'bg-red-500 text-white'
-                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                          ? 'bg-gradient-to-r from-red-500 to-rose-600 text-white'
+                          : 'bg-white border-2 border-gray-200 text-gray-700 hover:border-red-300'
                       }`}
                     >
-                      ❌ Unavailable
+                      <span className="text-base">❌</span>
+                      Unavailable
                     </button>
                   </div>
                 </div>
 
-                <div className="mb-4">
-                  <h3 className="text-sm font-semibold text-gray-900 mb-2">Filter by Category</h3>
-                  <div className="flex flex-wrap gap-2">
+                <div className="mb-6">
+                  <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <div className="w-7 h-7 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
+                      <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                      </svg>
+                    </div>
+                    Filter by Category
+                  </h3>
+                  <div className="flex flex-wrap gap-3">
                     {['Hospital', 'Market', 'Shopping Mall', 'Office'].map((category) => (
                       <button
                         key={category}
@@ -691,12 +788,16 @@ function App() {
                             setSelectedCategories([...selectedCategories, category])
                           }
                         }}
-                        className={`px-3 py-2 rounded-full text-xs font-medium transition-colors ${
+                        className={`px-4 py-2 rounded-full text-sm font-semibold transition-all duration-200 flex items-center gap-2 shadow-md hover:shadow-lg transform hover:scale-105 ${
                           selectedCategories.includes(category)
-                            ? 'bg-blue-500 text-white'
-                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                            ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white'
+                            : 'bg-white border-2 border-gray-200 text-gray-700 hover:border-blue-300'
                         }`}
                       >
+                        {category === 'Hospital' && '🏥'}
+                        {category === 'Market' && '🛒'}
+                        {category === 'Shopping Mall' && '🏬'}
+                        {category === 'Office' && '🏢'}
                         {category}
                       </button>
                     ))}
@@ -783,17 +884,24 @@ function App() {
                   )}
                 </div>
 
-                <div className="mb-4">
-                  <h2 className="text-xl font-semibold text-gray-900 mb-3">Public Areas Near You</h2>
+                <div className="mb-6">
+                  <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
+                      <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      </svg>
+                    </div>
+                    Search Parking Areas
+                  </h2>
                   <div className="relative">
                     <input
                       type="text"
                       placeholder="Search name or type..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-4 py-3 pl-12 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base shadow-sm transition-all duration-200"
                     />
-                    <svg className="absolute left-3 top-2.5 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="absolute left-4 top-3.5 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                     </svg>
                   </div>
