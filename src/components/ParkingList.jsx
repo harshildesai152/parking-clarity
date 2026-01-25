@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useFavorites } from '../contexts/FavoritesContext'
+import { useReports } from '../contexts/ReportsContext'
 
 const staticParkingData = [
   {
@@ -387,19 +388,25 @@ const staticParkingData = [
   }
   ]
 
-  const ParkingList = ({ selectedArea, setSelectedArea, currentTime, fullWidth = false, onAreaSelect }) => {
+  const ParkingList = ({ 
+  selectedArea, 
+  setSelectedArea, 
+  currentTime, 
+  fullWidth = false, 
+  onAreaSelect,
+  selectedCategories = [],
+  selectedVehicleTypes = [],
+  selectedParkingTypes = [],
+  parkingDuration = '',
+  filterByAvailability = null
+}) => {
   const [availabilityModal, setAvailabilityModal] = useState(null)
   const [reportModal, setReportModal] = useState(null)
   const [reportReason, setReportReason] = useState('')
   const [reportTime, setReportTime] = useState(new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }))
   const [reportDuration, setReportDuration] = useState('')
   const { toggleFavorite, isFavorite } = useFavorites()
-  
-  // Filter states
-  const [selectedCategories, setSelectedCategories] = useState([])
-  const [selectedVehicleTypes, setSelectedVehicleTypes] = useState([])
-  const [selectedParkingTypes, setSelectedParkingTypes] = useState([])
-  const [parkingDuration, setParkingDuration] = useState('')
+  const { addReport } = useReports()
 
   const handleCardClick = (parkingArea) => {
     if (fullWidth) {
@@ -451,14 +458,13 @@ const staticParkingData = [
         reason: reportReason,
         time: reportTime,
         duration: reportDuration,
-        timestamp: new Date().toLocaleString(),
         reportedBy: 'Anonymous User'
       }
       
-      console.log('Parking Full Report Submitted:', report)
+      // Add report to context
+      addReport(report)
       
-      // Here you would normally send this to your backend
-      // For now, we'll just log it and close the modal
+      console.log('Parking Full Report Submitted:', report)
       
       closeReportModal()
       
@@ -518,7 +524,7 @@ const staticParkingData = [
     }
   }
 
-  // Filter parking data based on selected categories, vehicle types, parking types, and duration
+  // Filter parking data based on selected categories, vehicle types, parking types, duration, and availability
   const filteredData = staticParkingData.filter(area => {
     // Category filter
     if (selectedCategories.length > 0 && !selectedCategories.includes(area.category)) {
@@ -538,6 +544,17 @@ const staticParkingData = [
     // Duration filter
     if (parkingDuration && area.maxDuration && parseInt(parkingDuration) > area.maxDuration) {
       return false
+    }
+
+    // Availability filter
+    if (filterByAvailability) {
+      const isAvailable = area.status === 'available'
+      if (filterByAvailability === 'available' && !isAvailable) {
+        return false
+      }
+      if (filterByAvailability === 'unavailable' && isAvailable) {
+        return false
+      }
     }
 
     return true

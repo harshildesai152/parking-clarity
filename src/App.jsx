@@ -3,7 +3,9 @@ import ClarityTime from './components/ClarityTime'
 import ParkingList from './components/ParkingList'
 import MapView from './components/MapView'
 import FavoritesList from './components/FavoritesList'
+import ReportsList from './components/ReportsList'
 import { FavoritesProvider } from './contexts/FavoritesContext'
+import { ReportsProvider } from './contexts/ReportsContext'
 import './App.css'
 
 function App() {
@@ -11,18 +13,21 @@ function App() {
   const [currentTime, setCurrentTime] = useState(new Date())
   const [isLiveMode, setIsLiveMode] = useState(false) // Default to SIMULATE mode
   const [activeTab, setActiveTab] = useState('map') // 'map' or 'list'
+  const [listViewTab, setListViewTab] = useState('parking') // 'parking' or 'reports' for list view
   const [sidebarView, setSidebarView] = useState('parking') // 'parking' or 'favorites'
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [selectedCategories, setSelectedCategories] = useState(['Hospital', 'Market', 'Shopping Mall', 'Office'])
   const [selectedVehicleTypes, setSelectedVehicleTypes] = useState([])
   const [parkingDuration, setParkingDuration] = useState('')
   const [selectedParkingTypes, setSelectedParkingTypes] = useState([])
+  const [filterByAvailability, setFilterByAvailability] = useState(null) // null, 'available', 'unavailable'
   const [searchRadius, setSearchRadius] = useState(1000) // Default 1km
   const [searchLocation, setSearchLocation] = useState('')
   const [userLocation, setUserLocation] = useState(null)
 
   return (
-    <FavoritesProvider>
+    <ReportsProvider>
+      <FavoritesProvider>
       <div className="h-screen bg-gray-50 flex flex-col">
       {/* Mobile Header */}
       <div className="lg:hidden bg-white border-b border-gray-200 px-4 py-3 z-30 flex-shrink-0">
@@ -187,6 +192,32 @@ function App() {
             {/* Category Filter */}
             <div className="px-4 pb-4">
               <div className="mb-4">
+                <h3 className="text-sm font-semibold text-gray-900 mb-2">Filter by Availability</h3>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => setFilterByAvailability(filterByAvailability === 'available' ? null : 'available')}
+                    className={`px-3 py-2 rounded-full text-xs font-medium transition-colors ${
+                      filterByAvailability === 'available'
+                        ? 'bg-green-500 text-white'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                  >
+                    ✅ Available
+                  </button>
+                  <button
+                    onClick={() => setFilterByAvailability(filterByAvailability === 'unavailable' ? null : 'unavailable')}
+                    className={`px-3 py-2 rounded-full text-xs font-medium transition-colors ${
+                      filterByAvailability === 'unavailable'
+                        ? 'bg-red-500 text-white'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                  >
+                    ❌ Unavailable
+                  </button>
+                </div>
+              </div>
+
+              <div className="mb-4">
                 <h3 className="text-sm font-semibold text-gray-900 mb-2">Filter by Category</h3>
                 <div className="flex flex-wrap gap-2">
                   {['Hospital', 'Market', 'Shopping Mall', 'Office'].map((category) => (
@@ -313,6 +344,7 @@ function App() {
                 selectedVehicleTypes={selectedVehicleTypes}
                 selectedParkingTypes={selectedParkingTypes}
                 parkingDuration={parkingDuration}
+                filterByAvailability={filterByAvailability}
                 onAreaSelect={() => setIsMobileMenuOpen(false)}
               />
             </div>
@@ -434,6 +466,32 @@ function App() {
                         📍 Current
                       </button>
                     </div>
+                  </div>
+                </div>
+
+                <div className="mb-4">
+                  <h3 className="text-sm font-semibold text-gray-900 mb-2">Filter by Availability</h3>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => setFilterByAvailability(filterByAvailability === 'available' ? null : 'available')}
+                      className={`px-3 py-2 rounded-full text-xs font-medium transition-colors ${
+                        filterByAvailability === 'available'
+                          ? 'bg-green-500 text-white'
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      }`}
+                    >
+                      ✅ Available
+                    </button>
+                    <button
+                      onClick={() => setFilterByAvailability(filterByAvailability === 'unavailable' ? null : 'unavailable')}
+                      className={`px-3 py-2 rounded-full text-xs font-medium transition-colors ${
+                        filterByAvailability === 'unavailable'
+                          ? 'bg-red-500 text-white'
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      }`}
+                    >
+                      ❌ Unavailable
+                    </button>
                   </div>
                 </div>
 
@@ -564,6 +622,8 @@ function App() {
                   selectedVehicleTypes={selectedVehicleTypes}
                   selectedParkingTypes={selectedParkingTypes}
                   parkingDuration={parkingDuration}
+                  filterByAvailability={filterByAvailability}
+                  onAreaSelect={() => setIsMobileMenuOpen(false)}
                 />
               </>
             ) : (
@@ -583,21 +643,53 @@ function App() {
               selectedVehicleTypes={selectedVehicleTypes}
               selectedParkingTypes={selectedParkingTypes}
               parkingDuration={parkingDuration}
+              filterByAvailability={filterByAvailability}
             />
           ) : (
             <div className="w-full h-full bg-gray-50 p-4 sm:p-6 lg:p-8 overflow-y-auto">
               <div className="max-w-7xl mx-auto">
                 <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 sm:mb-6">Parking Areas List</h2>
-                <ParkingList 
-                  selectedArea={selectedArea}
-                  setSelectedArea={setSelectedArea}
-                  currentTime={currentTime}
-                  selectedCategories={selectedCategories}
-                  selectedVehicleTypes={selectedVehicleTypes}
-                  selectedParkingTypes={selectedParkingTypes}
-                  parkingDuration={parkingDuration}
-                  fullWidth={true}
-                />
+                
+                {/* List View Tabs */}
+                <div className="flex bg-gray-100 rounded-lg p-1 mb-6">
+                  <button
+                    onClick={() => setListViewTab('parking')}
+                    className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                      listViewTab === 'parking'
+                        ? 'bg-white text-blue-600 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    🅿️ All Parking
+                  </button>
+                  <button
+                    onClick={() => setListViewTab('reports')}
+                    className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                      listViewTab === 'reports'
+                        ? 'bg-white text-blue-600 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    📋 Reports
+                  </button>
+                </div>
+
+                {/* Tab Content */}
+                {listViewTab === 'parking' ? (
+                  <ParkingList 
+                    selectedArea={selectedArea}
+                    setSelectedArea={setSelectedArea}
+                    currentTime={currentTime}
+                    selectedCategories={selectedCategories}
+                    selectedVehicleTypes={selectedVehicleTypes}
+                    selectedParkingTypes={selectedParkingTypes}
+                    parkingDuration={parkingDuration}
+                    filterByAvailability={filterByAvailability}
+                    fullWidth={true}
+                  />
+                ) : (
+                  <ReportsList />
+                )}
               </div>
             </div>
           )}
@@ -605,6 +697,7 @@ function App() {
       </div>
       </div>
     </FavoritesProvider>
+    </ReportsProvider>
   )
 }
 
