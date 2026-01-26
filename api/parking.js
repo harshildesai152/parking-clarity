@@ -1,5 +1,4 @@
 import { MongoClient } from 'mongodb';
-import Parking from '../../backend/models/Parking.js';
 
 const uri = process.env.MONGODB_URI;
 const client = new MongoClient(uri);
@@ -86,19 +85,50 @@ function simulateAvailability(parkingSpots, simulateTime, simulateDay) {
   });
 }
 
-export async function GET(request) {
+function calculateDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371; // Earth's radius in km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c * 1000; // Distance in meters
+}
+
+export default async function handler(req, res) {
+  // Enable CORS
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
+
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
   try {
     await client.connect();
     const database = client.db('parking-clarity');
     const collection = database.collection('parkings');
     
-    const { searchParams } = new URL(request.url);
+    const { searchParams } = new URL(req.url, `http://${req.headers.host}`);
     const query = Object.fromEntries(searchParams);
     
     let parkingSpots = await collection.find({}).toArray();
     
     // Convert MongoDB documents to plain objects
-    parkingSpots = parkingSpots.map(spot => spot.toObject());
+    parkingSpots = parkingSpots.map(spot => {
+      const obj = spot.toObject ? spot.toObject() : spot;
+      return {
+        ...obj,
+        _id: obj._id ? obj._id.toString() : obj._id
+      };
+    });
     
     // Apply simulation filters
     const simulateTime = query.SIMULATE_TIME;
@@ -112,7 +142,7 @@ export async function GET(request) {
     if (query.search) {
       parkingSpots = parkingSpots.filter(spot => 
         spot.name.toLowerCase().includes(query.search.toLowerCase()) ||
-        spot.category.toLowerCase().includes(query.search.toLowerCase())
+        (spot.category && spot.category.toLowerCase().includes(query.search.toLowerCase()))
       );
     }
     
@@ -166,29 +196,18 @@ export async function GET(request) {
       }).filter(spot => spot.distance <= radius);
     }
     
-    return Response.json({
+    res.status(200).json({
       success: true,
       data: parkingSpots
     });
     
   } catch (error) {
     console.error('API Error:', error);
-    return Response.json({ 
+    res.status(500).json({ 
       success: false, 
       error: error.message 
-    }, { status: 500 });
+    });
   } finally {
     await client.close();
   }
-}
-
-function calculateDistance(lat1, lon1, lat2, lon2) {
-  const R = 6371; // Earth's radius in km
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-    Math.sin(dLon/2) * Math.sin(dLon/2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-  return R * c * 1000; // Distance in meters
 }
