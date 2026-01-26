@@ -1,22 +1,19 @@
-const dbConnect = require('./db');
-const Report = require('./models/Report');
-const Parking = require('./models/Parking');
-const jwt = require('jsonwebtoken');
+import dbConnect from './db.js';
+import Report from './models/Report.js';
+import Parking from './models/Parking.js';
+import jwt from 'jsonwebtoken';
 
 export default async function handler(req, res) {
   const { method } = req;
   await dbConnect();
 
-  // Authentication check for POST and DELETE
   let user = null;
-  if (method !== 'OPTIONS') {
-    const token = req.cookies?.auth_token || req.body?.token;
-    if (token) {
-      try {
-        user = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret');
-      } catch (error) {
-        console.error('Auth Verify Error:', error.message);
-      }
+  const token = req.cookies?.auth_token || req.body?.token;
+  if (token) {
+    try {
+      user = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret');
+    } catch (error) {
+      console.error('Auth Verify Error:', error.message);
     }
   }
 

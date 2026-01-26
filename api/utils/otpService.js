@@ -1,5 +1,5 @@
-const nodemailer = require('nodemailer');
-const crypto = require('crypto');
+import nodemailer from 'nodemailer';
+import crypto from 'crypto';
 
 const otpService = {
   generateOTP: () => {
@@ -38,4 +38,4 @@ const otpService = {
   },
 };
 
-module.exports = otpService;
+export default otpService;

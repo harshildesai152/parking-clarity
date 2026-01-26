@@ -1,5 +1,5 @@
-const dbConnect = require('./db');
-const Parking = require('./models/Parking');
+import dbConnect from './db.js';
+import Parking from './models/Parking.js';
 
 export default async function handler(req, res) {
   const { method } = req;
@@ -24,7 +24,6 @@ export default async function handler(req, res) {
         SIMULATE_DAY
       } = req.query;
 
-      // If id is provided, return single record
       if (id) {
         const parking = await Parking.findById(id);
         if (!parking) {
@@ -33,16 +32,12 @@ export default async function handler(req, res) {
         return res.json(parking);
       }
 
-      // Build query
       let query = {};
-      
-      // Base condition: include active documents and documents without isActive field
       let baseConditions = [
         { isActive: true },
         { isActive: { $exists: false } }
       ];
 
-      // Search by name or description
       if (search) {
         baseConditions = baseConditions.map(condition => ({
           $and: [
@@ -60,30 +55,25 @@ export default async function handler(req, res) {
         query.$or = baseConditions;
       }
 
-      // Filter by category
       if (category) {
         const categories = category.split(',').map(cat => cat.trim().toLowerCase());
         query.category = { $in: categories };
       }
 
-      // Filter by vehicle type
       if (vehicleType) {
         const vehicleTypes = vehicleType.split(',').map(type => type.trim());
         query.vehicleTypes = { $in: vehicleTypes };
       }
 
-      // Filter by parking type
       if (parkingType) {
         const parkingTypes = parkingType.split(',').map(type => type.trim());
         query.parkingType = { $in: parkingTypes };
       }
 
-      // Filter by minimum duration
       if (minDuration) {
         query.minDuration = { $lte: parseInt(minDuration) };
       }
 
-      // Filter by availability
       if (available !== undefined) {
         if (available === 'true') {
           const availabilityCondition = {
@@ -118,10 +108,8 @@ export default async function handler(req, res) {
         }
       }
 
-      // Start with base query
       let parkingQuery = Parking.find(query);
 
-      // Location-based query if lat/lng provided
       if (lat && lng) {
         const userLat = parseFloat(lat);
         const userLng = parseFloat(lng);

@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const parkingSchema = new mongoose.Schema({
   name: {
@@ -107,5 +107,4 @@ const parkingSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Avoid OverwriteModelError
-module.exports = mongoose.models.Parking || mongoose.model('Parking', parkingSchema);
+export default mongoose.models.Parking || mongoose.model('Parking', parkingSchema);

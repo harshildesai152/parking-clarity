@@ -1,6 +1,6 @@
-const dbConnect = require('../db');
-const OTP = require('../models/OTP');
-const jwt = require('jsonwebtoken');
+import dbConnect from '../db.js';
+import OTP from '../models/OTP.js';
+import jwt from 'jsonwebtoken';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -33,7 +33,6 @@ export default async function handler(req, res) {
       { expiresIn: '24h' }
     );
 
-    // In Vercel functions, we set cookies via header
     res.setHeader('Set-Cookie', `auth_token=${token}; HttpOnly; Path=/; Max-Age=${24 * 60 * 60}; SameSite=Strict${process.env.NODE_ENV === 'production' ? '; Secure' : ''}`);
 
     return res.status(200).json({ 
