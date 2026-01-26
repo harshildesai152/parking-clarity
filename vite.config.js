@@ -11,5 +11,9 @@ export default defineConfig({
         changeOrigin: true
       }
     }
+  },
+  define: {
+    // Use different API base for development vs production
+    __API_BASE__: JSON.stringify(process.env.NODE_ENV === 'production' ? '/api' : '/api')
   }
 })
