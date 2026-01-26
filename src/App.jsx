@@ -14,7 +14,7 @@ import './App.css'
 function App() {
   const [selectedArea, setSelectedArea] = useState(null)
   const [currentTime, setCurrentTime] = useState(new Date())
-  const [isLiveMode, setIsLiveMode] = useState(false) // Default to SIMULATE mode
+  const [isSimulationEnabled, setIsSimulationEnabled] = useState(false) // Default: checkbox NOT checked
   const [activeTab, setActiveTab] = useState('map') // 'map' or 'list'
   const [listViewTab, setListViewTab] = useState('parking') // 'parking' or 'reports' for list view
   const [sidebarView, setSidebarView] = useState('parking') // 'parking' or 'favorites'
@@ -24,7 +24,7 @@ function App() {
   const [parkingDuration, setParkingDuration] = useState('')
   const [selectedParkingTypes, setSelectedParkingTypes] = useState([])
   const [filterByAvailability, setFilterByAvailability] = useState(null) // null, 'available', 'unavailable'
-  const [searchRadius, setSearchRadius] = useState(1000) // Default 1km
+  const [searchRadius, setSearchRadius] = useState('all') // Default: ALL (no radius filter)
   const [searchLocation, setSearchLocation] = useState('')
   const [userLocation, setUserLocation] = useState(null)
   const [parkingData, setParkingData] = useState([])
@@ -40,11 +40,12 @@ function App() {
     setSelectedParkingTypes([])
     setParkingDuration('')
     setFilterByAvailability(null)
-    setSearchRadius(1000)
+    setSearchRadius('all') // Reset to ALL
     setSearchLocation('')
     setUserLocation(null)
     setSearchQuery('') // Clear search query
     setShowOnlyReported(false)
+    setIsSimulationEnabled(false) // Uncheck simulation checkbox
   }
 
   // Fetch all parking data without any filters
@@ -70,16 +71,10 @@ function App() {
       
       const params = new URLSearchParams()
       
-      if (!isLiveMode) {
+      // Only add SIMULATE parameters when checkbox is checked
+      if (isSimulationEnabled) {
         const timeString = currentTime.toTimeString().slice(0, 5)
         const dayString = currentTime.toLocaleDateString('en-US', { weekday: 'long' })
-        
-        params.append('SIMULATE_TIME', timeString)
-        params.append('SIMULATE_DAY', dayString)
-      } else {
-        const now = new Date()
-        const timeString = now.toTimeString().slice(0, 5)
-        const dayString = now.toLocaleDateString('en-US', { weekday: 'long' })
         
         params.append('SIMULATE_TIME', timeString)
         params.append('SIMULATE_DAY', dayString)
@@ -91,7 +86,7 @@ function App() {
       if (selectedParkingTypes.length > 0) params.append('parkingType', selectedParkingTypes.join(','))
       if (parkingDuration) params.append('minDuration', parkingDuration)
       if (filterByAvailability) params.append('available', filterByAvailability === 'available' ? 'true' : 'false')
-      if (searchRadius) params.append('radius', searchRadius)
+      if (searchRadius && searchRadius !== 'all') params.append('radius', searchRadius)
       if (userLocation) {
         params.append('lat', userLocation[0])
         params.append('lng', userLocation[1])
@@ -118,22 +113,7 @@ function App() {
 
   useEffect(() => {
     fetchParkingData()
-  }, [currentTime, isLiveMode, selectedCategories, selectedVehicleTypes, selectedParkingTypes, parkingDuration, filterByAvailability, searchRadius, userLocation, searchQuery])
-
-  // Auto-refresh data every minute when in live mode
-  useEffect(() => {
-    let interval;
-    if (isLiveMode) {
-      interval = setInterval(() => {
-        const now = new Date()
-        setCurrentTime(now)
-      }, 60000)
-    }
-    
-    return () => {
-      if (interval) clearInterval(interval)
-    }
-  }, [isLiveMode])
+  }, [currentTime, isSimulationEnabled, selectedCategories, selectedVehicleTypes, selectedParkingTypes, parkingDuration, filterByAvailability, searchRadius, userLocation, searchQuery])
 
   // Fetch all parking data when component mounts or when switching views
   useEffect(() => {
@@ -206,13 +186,14 @@ function App() {
             <span className="text-sm text-gray-600">Radius:</span>
             <select
               value={searchRadius}
-              onChange={(e) => setSearchRadius(Number(e.target.value))}
+              onChange={(e) => setSearchRadius(e.target.value)}
               className="px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value={500}>500m</option>
-              <option value={1000}>1km</option>
-              <option value={2000}>2km</option>
-              <option value={5000}>5km</option>
+              <option value="all">ALL</option>
+              <option value="1000">Up to 1 KM</option>
+              <option value="2000">Up to 2 KM</option>
+              <option value="5000">Up to 5 KM</option>
+              <option value="10000">Up to 10 KM</option>
             </select>
           </div>
         </div>
@@ -279,8 +260,8 @@ function App() {
               <ClarityTime
                 currentTime={currentTime}
                 setCurrentTime={setCurrentTime}
-                isLiveMode={isLiveMode}
-                setIsLiveMode={setIsLiveMode}
+                isSimulationEnabled={isSimulationEnabled}
+                setIsSimulationEnabled={setIsSimulationEnabled}
               />
 
               {/* Search Section */}
@@ -570,6 +551,7 @@ function App() {
                 clearAllFilters={clearAllFilters}
                 searchQuery={searchQuery}
                 setSearchQuery={setSearchQuery}
+                searchRadius={searchRadius}
               />
             </div>
           </div>
@@ -601,8 +583,8 @@ function App() {
             <ClarityTime 
               currentTime={currentTime}
               setCurrentTime={setCurrentTime}
-              isLiveMode={isLiveMode}
-              setIsLiveMode={setIsLiveMode}
+              isSimulationEnabled={isSimulationEnabled}
+              setIsSimulationEnabled={setIsSimulationEnabled}
             />
           </div>
           
@@ -700,13 +682,14 @@ function App() {
                       <span className="text-sm text-gray-600">Radius:</span>
                       <select
                         value={searchRadius}
-                        onChange={(e) => setSearchRadius(Number(e.target.value))}
+                        onChange={(e) => setSearchRadius(e.target.value)}
                         className="px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
-                        <option value={500}>500m</option>
-                        <option value={1000}>1km</option>
-                        <option value={2000}>2km</option>
-                        <option value={5000}>5km</option>
+                        <option value="all">ALL</option>
+                        <option value="1000">Up to 1 KM</option>
+                        <option value="2000">Up to 2 KM</option>
+                        <option value="5000">Up to 5 KM</option>
+                        <option value="10000">Up to 10 KM</option>
                       </select>
                       <button
                         onClick={() => {
@@ -937,6 +920,7 @@ function App() {
                   clearAllFilters={clearAllFilters}
                   searchQuery={searchQuery}
                   setSearchQuery={setSearchQuery}
+                  searchRadius={searchRadius}
                   refreshData={refreshData} // Added refresh callback
                 />
               </>
@@ -1009,6 +993,7 @@ function App() {
                     setSearchQuery={setSearchQuery}
                     showAllData={true} 
                     showOnlyReported={showOnlyReported} 
+                    searchRadius={searchRadius}
                     refreshData={refreshData} // Added refresh callback
                   />
                 ) : (
