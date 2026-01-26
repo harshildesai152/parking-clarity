@@ -1,7 +1,10 @@
 import { useState } from 'react'
+import { toast } from 'react-toastify'
 import { useFavorites } from '../contexts/FavoritesContext'
 import { useReports } from '../contexts/ReportsContext'
+import { useAuth } from '../contexts/AuthContext'
 import { calculateStatus } from '../utils/statusUtils'
+import LoginModal from './LoginModal'
 
 
 
@@ -21,7 +24,9 @@ import { calculateStatus } from '../utils/statusUtils'
   clearAllFilters,
   searchQuery = '',
   setSearchQuery,
-  showAllData = false // New prop to show all data without filters
+  showAllData = false, // New prop to show all data without filters
+  showOnlyReported = false, // New prop to show only reported spots
+  refreshData // Added refresh callback
 }) => {
   // Normalize parking data to match UI expectations
   const normalizedParkingData = parkingData
@@ -52,8 +57,12 @@ import { calculateStatus } from '../utils/statusUtils'
   const [reportReason, setReportReason] = useState('')
   const [reportTime, setReportTime] = useState(new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }))
   const [reportDuration, setReportDuration] = useState('')
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false)
+  const [pendingReportArea, setPendingReportArea] = useState(null)
+  
   const { toggleFavorite, isFavorite } = useFavorites()
   const { addReport } = useReports()
+  const { isAuthenticated, token } = useAuth()
 
   const handleCardClick = (parkingArea) => {
     if (fullWidth) {
@@ -85,6 +94,11 @@ import { calculateStatus } from '../utils/statusUtils'
   }
 
   const openReportModal = (parkingArea) => {
+    if (!isAuthenticated) {
+      setPendingReportArea(parkingArea)
+      setIsLoginModalOpen(true)
+      return
+    }
     setReportModal(parkingArea)
     setReportReason('')
     setReportTime(new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }))
@@ -98,25 +112,47 @@ import { calculateStatus } from '../utils/statusUtils'
     setReportDuration('')
   }
 
-  const handleSubmitReport = () => {
+  const handleSubmitReport = async () => {
     if (reportModal && reportReason.trim()) {
-      const report = {
-        parkingArea: reportModal.name,
-        reason: reportReason,
-        time: reportTime,
-        duration: reportDuration,
-        reportedBy: 'Anonymous User'
+      try {
+        const reportData = {
+          parking_id: reportModal.id,
+          report_reason: reportReason,
+          report_timing: reportTime,
+          report_duration: reportDuration,
+          token: token // Use token from auth context as requested
+        }
+
+        const response = await fetch('/api/reports', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(reportData),
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          // Add report to local context for immediate UI update
+          addReport({
+            parkingArea: reportModal.name,
+            reason: reportReason,
+            time: reportTime,
+            duration: reportDuration,
+            reportedBy: 'Me'
+          });
+          
+          toast.success('Report submitted successfully! Thank you for helping the community.');
+          closeReportModal();
+          
+          // Trigger re-fetch of parking data to show updated counts
+          if (refreshData) refreshData();
+        } else {
+          const errorData = await response.json();
+          toast.error(`Error: ${errorData.error || 'Failed to submit report'}`);
+        }
+      } catch (error) {
+        console.error('Error submitting report:', error);
+        toast.error('Network error. Please try again.');
       }
-      
-      // Add report to context
-      addReport(report)
-      
-      console.log('Parking Full Report Submitted:', report)
-      
-      closeReportModal()
-      
-      // Show success message (you could add a toast notification here)
-      alert('Report submitted successfully! Thank you for helping the community.')
     }
   }
 
@@ -171,10 +207,17 @@ import { calculateStatus } from '../utils/statusUtils'
     }
   }
 
-  // Filter parking data based on selected categories, vehicle types, parking types, duration, and availability
-  // Skip all filters if showAllData is true
-  const filteredData = showAllData ? normalizedParkingData : normalizedParkingData.filter(area => {
-    // Category filter - map API category to UI filter
+  // Filter parking data
+  let filteredData = normalizedParkingData.filter(area => {
+    // 1. Show only reported spots if requested (Highest priority filter)
+    if (showOnlyReported && (!area.reports || area.reports.count === 0)) {
+      return false
+    }
+
+    // If showAllData is true, we skip other filters
+    if (showAllData) return true;
+
+    // 2. Category filter
     const uiCategory = area.category ? area.category.charAt(0).toUpperCase() + area.category.slice(1) : ''
     if (selectedCategories.length > 0 && !selectedCategories.includes(uiCategory) && !selectedCategories.includes(area.category)) {
       return false
@@ -302,7 +345,7 @@ import { calculateStatus } from '../utils/statusUtils'
                     🚨 {area.reports.count} users reported parking is full
                   </span>
                   <span className="text-xs text-red-500">
-                    {Math.floor((Date.now() - area.reports.lastUpdated) / 60000)}m ago
+                    {Math.floor((Date.now() - new Date(area.reports.lastUpdated)) / 60000)}m ago
                   </span>
                 </div>
               </div>
@@ -467,6 +510,21 @@ import { calculateStatus } from '../utils/statusUtils'
           </div>
         </div>
       )}
+
+      {/* Login Modal for Authentication */}
+      <LoginModal 
+        isOpen={isLoginModalOpen} 
+        onClose={() => {
+          setIsLoginModalOpen(false);
+          setPendingReportArea(null);
+        }} 
+        onSuccess={() => {
+          if (pendingReportArea) {
+            setReportModal(pendingReportArea);
+            setPendingReportArea(null);
+          }
+        }}
+      />
     </>
   )
 }

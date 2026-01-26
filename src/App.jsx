@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react'
+import { ToastContainer } from 'react-toastify'
+import 'react-toastify/dist/ReactToastify.css'
 import ClarityTime from './components/ClarityTime'
 import ParkingList from './components/ParkingList'
 import MapView from './components/MapView'
@@ -6,6 +8,7 @@ import FavoritesList from './components/FavoritesList'
 import ReportsList from './components/ReportsList'
 import { FavoritesProvider } from './contexts/FavoritesContext'
 import { ReportsProvider } from './contexts/ReportsContext'
+import { AuthProvider } from './contexts/AuthContext'
 import './App.css'
 
 function App() {
@@ -28,6 +31,7 @@ function App() {
   const [allParkingData, setAllParkingData] = useState([]) // Separate state for all parking data
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('') // Search query for parking areas
+  const [showOnlyReported, setShowOnlyReported] = useState(false) // New filter for reported spots
 
   // Clear all filters function
   const clearAllFilters = () => {
@@ -40,6 +44,7 @@ function App() {
     setSearchLocation('')
     setUserLocation(null)
     setSearchQuery('') // Clear search query
+    setShowOnlyReported(false)
   }
 
   // Fetch all parking data without any filters
@@ -58,71 +63,60 @@ function App() {
     }
   }
 
-  useEffect(() => {
-    const fetchParkingData = async () => {
-      try {
-        setIsLoading(true)
+  // Fetch parking data with filters
+  const fetchParkingData = async () => {
+    try {
+      setIsLoading(true)
+      
+      const params = new URLSearchParams()
+      
+      if (!isLiveMode) {
+        const timeString = currentTime.toTimeString().slice(0, 5)
+        const dayString = currentTime.toLocaleDateString('en-US', { weekday: 'long' })
         
-        // Build query parameters
-        const params = new URLSearchParams()
+        params.append('SIMULATE_TIME', timeString)
+        params.append('SIMULATE_DAY', dayString)
+      } else {
+        const now = new Date()
+        const timeString = now.toTimeString().slice(0, 5)
+        const dayString = now.toLocaleDateString('en-US', { weekday: 'long' })
         
-        // Add simulate parameters if not in live mode, or current time if in live mode
-        if (!isLiveMode) {
-          const timeString = currentTime.toTimeString().slice(0, 5) // HH:MM format
-          const dayString = currentTime.toLocaleDateString('en-US', { weekday: 'long' })
-          
-          params.append('SIMULATE_TIME', timeString)
-          params.append('SIMULATE_DAY', dayString)
-        } else {
-          // In live mode, send current time and day
-          const now = new Date()
-          const timeString = now.toTimeString().slice(0, 5) // HH:MM format
-          const dayString = now.toLocaleDateString('en-US', { weekday: 'long' })
-          
-          params.append('SIMULATE_TIME', timeString)
-          params.append('SIMULATE_DAY', dayString)
-        }
-        
-        // Add other filter parameters
-        if (searchQuery) {
-          params.append('search', searchQuery)
-        }
-        if (selectedCategories.length > 0) {
-          params.append('category', selectedCategories.join(','))
-        }
-        if (selectedVehicleTypes.length > 0) {
-          params.append('vehicleType', selectedVehicleTypes.join(','))
-        }
-        if (selectedParkingTypes.length > 0) {
-          params.append('parkingType', selectedParkingTypes.join(','))
-        }
-        if (parkingDuration) {
-          params.append('minDuration', parkingDuration)
-        }
-        if (filterByAvailability) {
-          params.append('available', filterByAvailability === 'available' ? 'true' : 'false')
-        }
-        if (searchRadius) {
-          params.append('radius', searchRadius)
-        }
-        if (userLocation) {
-          params.append('lat', userLocation[0])
-          params.append('lng', userLocation[1])
-        }
-        
-        const url = `/api/parking${params.toString() ? '?' + params.toString() : ''}`
-        const response = await fetch(url)
-        const result = await response.json()
-        if (result && result.data) {
-          setParkingData(result.data)
-        }
-      } catch (error) {
-        console.error('Error fetching parking data:', error)
-      } finally {
-        setIsLoading(false)
+        params.append('SIMULATE_TIME', timeString)
+        params.append('SIMULATE_DAY', dayString)
       }
+      
+      if (searchQuery) params.append('search', searchQuery)
+      if (selectedCategories.length > 0) params.append('category', selectedCategories.join(','))
+      if (selectedVehicleTypes.length > 0) params.append('vehicleType', selectedVehicleTypes.join(','))
+      if (selectedParkingTypes.length > 0) params.append('parkingType', selectedParkingTypes.join(','))
+      if (parkingDuration) params.append('minDuration', parkingDuration)
+      if (filterByAvailability) params.append('available', filterByAvailability === 'available' ? 'true' : 'false')
+      if (searchRadius) params.append('radius', searchRadius)
+      if (userLocation) {
+        params.append('lat', userLocation[0])
+        params.append('lng', userLocation[1])
+      }
+      
+      const url = `/api/parking${params.toString() ? '?' + params.toString() : ''}`
+      const response = await fetch(url)
+      const result = await response.json()
+      if (result && result.data) {
+        setParkingData(result.data)
+      }
+    } catch (error) {
+      console.error('Error fetching parking data:', error)
+    } finally {
+      setIsLoading(false)
     }
+  }
 
+  // Combined refresh function
+  const refreshData = () => {
+    fetchParkingData()
+    fetchAllParkingData()
+  }
+
+  useEffect(() => {
     fetchParkingData()
   }, [currentTime, isLiveMode, selectedCategories, selectedVehicleTypes, selectedParkingTypes, parkingDuration, filterByAvailability, searchRadius, userLocation, searchQuery])
 
@@ -131,16 +125,13 @@ function App() {
     let interval;
     if (isLiveMode) {
       interval = setInterval(() => {
-        // This will trigger the fetchParkingData effect
         const now = new Date()
         setCurrentTime(now)
-      }, 60000) // Refresh every minute
+      }, 60000)
     }
     
     return () => {
-      if (interval) {
-        clearInterval(interval)
-      }
+      if (interval) clearInterval(interval)
     }
   }, [isLiveMode])
 
@@ -152,8 +143,11 @@ function App() {
   }, [activeTab, listViewTab])
 
   return (
-    <ReportsProvider>
-      <FavoritesProvider>
+    <>
+    <AuthProvider>
+      <ReportsProvider>
+        <FavoritesProvider>
+          {/* UI implementation continues ... */}
       <div className="h-screen bg-gray-50 flex flex-col">
       {/* Mobile Header */}
       <div className="lg:hidden bg-white border-b border-gray-200 px-4 py-3 z-30 flex-shrink-0">
@@ -407,6 +401,26 @@ function App() {
                     Unavailable
                   </button>
                 </div>
+              </div>
+
+              <div className="mb-6">
+                <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                  <div className="w-7 h-7 bg-gradient-to-r from-red-500 to-rose-600 rounded-lg flex items-center justify-center">
+                    <span className="text-white text-xs">🚨</span>
+                  </div>
+                  Reporting Filter
+                </h3>
+                <button
+                  onClick={() => setShowOnlyReported(!showOnlyReported)}
+                  className={`w-full px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-3 shadow-md hover:shadow-lg transform hover:scale-[1.02] ${
+                    showOnlyReported
+                      ? 'bg-gradient-to-r from-red-600 to-orange-600 text-white'
+                      : 'bg-white border-2 border-gray-200 text-gray-700 hover:border-red-400'
+                  }`}
+                >
+                  <span className="text-xl">🚨</span>
+                  {showOnlyReported ? 'Showing Reported Only' : 'Show Only Reported Spots'}
+                </button>
               </div>
 
               <div className="mb-6">
@@ -768,6 +782,7 @@ function App() {
                   </div>
                 </div>
 
+
                 <div className="mb-6">
                   <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
                     <div className="w-7 h-7 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
@@ -922,6 +937,7 @@ function App() {
                   clearAllFilters={clearAllFilters}
                   searchQuery={searchQuery}
                   setSearchQuery={setSearchQuery}
+                  refreshData={refreshData} // Added refresh callback
                 />
               </>
             ) : (
@@ -991,7 +1007,9 @@ function App() {
                     clearAllFilters={clearAllFilters}
                     searchQuery={searchQuery}
                     setSearchQuery={setSearchQuery}
-                    showAllData={true} // Show all data without filters in list view
+                    showAllData={true} 
+                    showOnlyReported={showOnlyReported} 
+                    refreshData={refreshData} // Added refresh callback
                   />
                 ) : (
                   <ReportsList />
@@ -1004,6 +1022,20 @@ function App() {
       </div>
     </FavoritesProvider>
     </ReportsProvider>
+    </AuthProvider>
+    <ToastContainer
+      position="top-right"
+      autoClose={3000}
+      hideProgressBar={false}
+      newestOnTop={false}
+      closeOnClick
+      rtl={false}
+      pauseOnFocusLoss
+      draggable
+      pauseOnHover
+      theme="light"
+    />
+    </>
   )
 }
 

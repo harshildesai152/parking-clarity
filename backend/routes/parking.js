@@ -162,16 +162,24 @@ router.get('/', async (req, res) => {
     // Execute query
     const parkingSpots = await parkingQuery.exec();
 
-    // Convert Mongoose documents to plain objects
-    const plainParkingSpots = parkingSpots.map(spot => spot.toObject());
+    // Convert Mongoose documents to plain objects and map report counts
+    let result = parkingSpots.map(spot => {
+      const spotObj = spot.toObject();
+      return {
+        ...spotObj,
+        reports: {
+          count: spotObj.reportCount || 0,
+          lastUpdated: spotObj.updatedAt
+        }
+      };
+    });
 
     // Add distance calculation if coordinates provided
-    let result = plainParkingSpots;
     if (lat && lng) {
       const userLat = parseFloat(lat);
       const userLng = parseFloat(lng);
       
-      result = plainParkingSpots.map(spot => {
+      result = result.map(spot => {
         const distance = calculateDistance(
           userLat, userLng,
           spot.location.lat, spot.location.lng
