@@ -46,7 +46,7 @@ function App() {
   const fetchAllParkingData = async () => {
     try {
       setIsLoading(true)
-      const response = await fetch('http://localhost:5000/api/parking')
+      const response = await fetch('/api/parking')
       const result = await response.json()
       if (result && result.data) {
         setAllParkingData(result.data)
@@ -110,7 +110,7 @@ function App() {
           params.append('lng', userLocation[1])
         }
         
-        const url = `http://localhost:5000/api/parking${params.toString() ? '?' + params.toString() : ''}`
+        const url = `/api/parking${params.toString() ? '?' + params.toString() : ''}`
         const response = await fetch(url)
         const result = await response.json()
         if (result && result.data) {
