@@ -1,9 +1,12 @@
 import { useState, useEffect, useRef } from 'react'
 import { MapContainer, TileLayer, Marker, Popup, Circle, Polyline, useMap } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
+import './MapView.css'
 import L from 'leaflet'
 import { useFavorites } from '../contexts/FavoritesContext'
 import { calculateStatus } from '../utils/statusUtils'
+import { calculateDistance, formatDistance } from '../utils/distanceUtils'
+import { useGeolocation } from '../hooks/useGeolocation'
 
 // Fix for default marker icon in react-leaflet
 delete L.Icon.Default.prototype._getIconUrl
@@ -97,7 +100,45 @@ const MapView = ({
   const [route, setRoute] = useState(null)
   const [isLoadingRoute, setIsLoadingRoute] = useState(false)
   const [locationPermission, setLocationPermission] = useState('prompt') // 'prompt', 'granted', 'denied')
+  const { location: userGeolocation, error: locationError, loading: locationLoading } = useGeolocation()
   const { toggleFavorite, isFavorite } = useFavorites()
+
+  // Calculate distances when user location or parking data changes
+  const [parkingWithDistance, setParkingWithDistance] = useState(normalizedParkingData)
+
+  useEffect(() => {
+    if (userGeolocation && normalizedParkingData.length > 0) {
+      const updatedParkingData = normalizedParkingData.map(area => {
+        let distance = 0;
+        
+        // Get parking area coordinates
+        let areaLat, areaLng;
+        if (area.coordinates && Array.isArray(area.coordinates) && area.coordinates.length === 2) {
+          [areaLat, areaLng] = area.coordinates;
+        } else if (area.location && area.location.lat && area.location.lng) {
+          areaLat = area.location.lat;
+          areaLng = area.location.lng;
+        } else {
+          // If no coordinates available, keep original distance or set to 0
+          distance = area.distance || 0;
+          return { ...area, distance };
+        }
+
+        // Calculate distance using Haversine formula
+        distance = calculateDistance(userGeolocation.lat, userGeolocation.lng, areaLat, areaLng);
+        
+        return {
+          ...area,
+          distance: distance
+        };
+      });
+
+      setParkingWithDistance(updatedParkingData);
+    } else {
+      // If no user location, use original data
+      setParkingWithDistance(normalizedParkingData);
+    }
+  }, [userGeolocation, normalizedParkingData]);
   const mapRef = useRef(null)
 
   // Auto-center map on first result when data arrives
@@ -170,6 +211,8 @@ const MapView = ({
   }
 
   const handleParkingClick = async (parkingArea) => {
+    console.log('Parking clicked:', parkingArea.name);
+    
     // Set selected area to sync with sidebar
     setSelectedArea(parkingArea)
     
@@ -212,6 +255,7 @@ const MapView = ({
           align-items: center;
           justify-content: center;
           position: relative;
+          cursor: pointer;
           ${isSelected ? 'animation: pulse 2s infinite;' : ''}
         ">
           <div style="
@@ -219,6 +263,7 @@ const MapView = ({
             width: ${isSelected ? '10px' : '8px'};
             height: ${isSelected ? '10px' : '8px'};
             border-radius: 50%;
+            pointer-events: none;
           "></div>
           ${isFavoriteSpot ? `
             <div style="
@@ -234,6 +279,7 @@ const MapView = ({
               align-items: center;
               justify-content: center;
               font-size: 10px;
+              pointer-events: none;
             ">⭐</div>
           ` : ''}
         </div>
@@ -342,7 +388,7 @@ const MapView = ({
         )}
 
         {/* Parking Locations */}
-        {normalizedParkingData
+        {parkingWithDistance
           .filter(area => {
             // Category filter - map API category to UI filter
             const uiCategory = area.category ? area.category.charAt(0).toUpperCase() + area.category.slice(1) : ''
@@ -389,14 +435,21 @@ const MapView = ({
                 key={area.id}
                 position={area.coordinates}
                 icon={createCustomIcon(area.status, selectedArea?.id === area.id, isFavorite(area.id))}
+                onclick={() => {
+                  console.log('Marker onclick triggered');
+                  handleParkingClick(area);
+                }}
                 eventHandlers={{
-                  click: () => handleParkingClick(area)
+                  click: (e) => {
+                    console.log('Marker eventHandlers click triggered');
+                    handleParkingClick(area);
+                  }
                 }}
               >
             <Popup>
               <div className="text-xs sm:text-sm max-w-[200px] sm:max-w-xs p-1 sm:p-2">
                 <div className="font-semibold text-gray-900 mb-1 text-sm sm:text-base">{area.name}</div>
-                <div className="text-xs text-gray-500 mb-2">{area.category} • {area.distance} km away</div>
+                <div className="text-xs text-gray-500 mb-2">{area.category} • {formatDistance(area.distance)}</div>
 
                 <div className={`inline-block px-2 py-1 rounded-full text-xs font-medium mb-2 ${
                   area.status === 'available' ? 'bg-green-100 text-green-800' :

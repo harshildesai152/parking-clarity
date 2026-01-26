@@ -1,9 +1,11 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { toast } from 'react-toastify'
 import { useFavorites } from '../contexts/FavoritesContext'
 import { useReports } from '../contexts/ReportsContext'
 import { useAuth } from '../contexts/AuthContext'
 import { calculateStatus } from '../utils/statusUtils'
+import { calculateDistance, formatDistance } from '../utils/distanceUtils'
+import { useGeolocation } from '../hooks/useGeolocation'
 import LoginModal from './LoginModal'
 
 
@@ -63,6 +65,46 @@ import LoginModal from './LoginModal'
   const { toggleFavorite, isFavorite } = useFavorites()
   const { addReport } = useReports()
   const { isAuthenticated, token } = useAuth()
+  const { location: userLocation, error: locationError, loading: locationLoading } = useGeolocation()
+
+  // Calculate distances when user location or parking data changes
+  const [parkingWithDistance, setParkingWithDistance] = useState(normalizedParkingData)
+
+  useEffect(() => {
+    if (userLocation && normalizedParkingData.length > 0) {
+      const updatedParkingData = normalizedParkingData.map(area => {
+        let distance = 0;
+        
+        // Get parking area coordinates
+        let areaLat, areaLng;
+        if (area.coordinates && Array.isArray(area.coordinates) && area.coordinates.length === 2) {
+          [areaLat, areaLng] = area.coordinates;
+        } else if (area.location && area.location.lat && area.location.lng) {
+          areaLat = area.location.lat;
+          areaLng = area.location.lng;
+        } else {
+          // If no coordinates available, keep original distance or set to 0
+          distance = area.distance || 0;
+          return { ...area, distance };
+        }
+
+        // Calculate distance using Haversine formula
+        distance = calculateDistance(userLocation.lat, userLocation.lng, areaLat, areaLng);
+        
+        return {
+          ...area,
+          distance: distance
+        };
+      });
+
+      // Sort by distance
+      updatedParkingData.sort((a, b) => a.distance - b.distance);
+      setParkingWithDistance(updatedParkingData);
+    } else {
+      // If no user location, use original data
+      setParkingWithDistance(normalizedParkingData);
+    }
+  }, [userLocation, normalizedParkingData]);
 
   const handleCardClick = (parkingArea) => {
     if (fullWidth) {
@@ -208,7 +250,7 @@ import LoginModal from './LoginModal'
   }
 
   // Filter parking data
-  let filteredData = normalizedParkingData.filter(area => {
+  let filteredData = parkingWithDistance.filter(area => {
     // 1. Show only reported spots if requested (Highest priority filter)
     if (showOnlyReported && (!area.reports || area.reports.count === 0)) {
       return false
@@ -254,6 +296,18 @@ import LoginModal from './LoginModal'
 
   return (
     <>
+      {/* Location Error Alert */}
+      {locationError && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
+          <div className="flex items-center gap-2">
+            <svg className="w-4 h-4 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+            <span className="text-sm text-yellow-800">{locationError}</span>
+          </div>
+        </div>
+      )}
+      
       {isLoading && (
         <div className="flex justify-center p-8">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
@@ -277,7 +331,7 @@ import LoginModal from './LoginModal'
                 <div className="flex items-center gap-2 mt-1">
                   <span className="text-sm text-gray-500">{area.category}</span>
                   <span className="text-gray-300">•</span>
-                  <span className="text-sm text-gray-500">{area.distance} km away</span>
+                  <span className="text-sm text-gray-500">{formatDistance(area.distance)}</span>
                 </div>
               </div>
               <div className={`px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1 border ${getStatusColor(area.status)}`}>
@@ -637,7 +691,7 @@ const AvailabilityDetailModal = ({ parkingArea, onClose }) => {
               <div className="flex items-center gap-4 text-sm text-blue-100">
                 <span>{parkingArea.category}</span>
                 <span>•</span>
-                <span>{parkingArea.distance} km away</span>
+                <span>{formatDistance(parkingArea.distance)}</span>
               </div>
             </div>
             <button
@@ -669,7 +723,7 @@ const AvailabilityDetailModal = ({ parkingArea, onClose }) => {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Distance:</span>
-                    <span className="font-medium text-gray-900">{parkingArea.distance} km</span>
+                    <span className="font-medium text-gray-900">{formatDistance(parkingArea.distance)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Operating Hours:</span>
