@@ -28,6 +28,7 @@ import LoginModal from './LoginModal'
   setSearchQuery,
   showAllData = false, // New prop to show all data without filters
   showOnlyReported = false, // New prop to show only reported spots
+  searchRadius = 'all', // New prop for radius filter
   refreshData // Added refresh callback
 }) => {
   // Normalize parking data to match UI expectations
@@ -97,14 +98,23 @@ import LoginModal from './LoginModal'
         };
       });
 
+      // Apply radius filter if not 'all'
+      let filteredData = updatedParkingData;
+      if (searchRadius !== 'all' && userLocation) {
+        const radiusInKm = parseInt(searchRadius) / 1000; // Convert meters to km
+        filteredData = updatedParkingData.filter(area => {
+          return area.distance <= radiusInKm;
+        });
+      }
+
       // Sort by distance
-      updatedParkingData.sort((a, b) => a.distance - b.distance);
-      setParkingWithDistance(updatedParkingData);
+      filteredData.sort((a, b) => a.distance - b.distance);
+      setParkingWithDistance(filteredData);
     } else {
       // If no user location, use original data
       setParkingWithDistance(normalizedParkingData);
     }
-  }, [userLocation, normalizedParkingData]);
+  }, [userLocation, normalizedParkingData, searchRadius]);
 
   const handleCardClick = (parkingArea) => {
     if (fullWidth) {
