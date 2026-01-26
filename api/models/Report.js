@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const reportSchema = new mongoose.Schema({
   parking_id: {
@@ -28,4 +28,4 @@ const reportSchema = new mongoose.Schema({
   },
 });
 
-module.exports = mongoose.models.Report || mongoose.model('Report', reportSchema);
+export default mongoose.models.Report || mongoose.model('Report', reportSchema);

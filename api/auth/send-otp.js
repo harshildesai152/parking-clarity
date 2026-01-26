@@ -1,6 +1,6 @@
-const dbConnect = require('../db');
-const OTP = require('../models/OTP');
-const otpService = require('../utils/otpService');
+import dbConnect from '../db.js';
+import OTP from '../models/OTP.js';
+import otpService from '../utils/otpService.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
