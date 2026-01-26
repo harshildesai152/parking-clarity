@@ -384,25 +384,7 @@ function App() {
                 </div>
               </div>
 
-              <div className="mb-6">
-                <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                  <div className="w-7 h-7 bg-gradient-to-r from-red-500 to-rose-600 rounded-lg flex items-center justify-center">
-                    <span className="text-white text-xs">🚨</span>
-                  </div>
-                  Reporting Filter
-                </h3>
-                <button
-                  onClick={() => setShowOnlyReported(!showOnlyReported)}
-                  className={`w-full px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-3 shadow-md hover:shadow-lg transform hover:scale-[1.02] ${
-                    showOnlyReported
-                      ? 'bg-gradient-to-r from-red-600 to-orange-600 text-white'
-                      : 'bg-white border-2 border-gray-200 text-gray-700 hover:border-red-400'
-                  }`}
-                >
-                  <span className="text-xl">🚨</span>
-                  {showOnlyReported ? 'Showing Reported Only' : 'Show Only Reported Spots'}
-                </button>
-              </div>
+            
 
               <div className="mb-6">
                 <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
