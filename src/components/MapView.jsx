@@ -81,7 +81,9 @@ const MapView = ({
   selectedVehicleTypes = [], 
   selectedParkingTypes = [], 
   parkingDuration = null,
-  filterByAvailability = null 
+  filterByAvailability = null,
+  route = null,
+  setRoute = null
 }) => {
   // Normalize parking data to match UI expectations
   const normalizedParkingData = useMemo(() => {
@@ -111,7 +113,6 @@ const MapView = ({
 
   const [userLocation, setUserLocation] = useState([21.2000, 72.8400]) // Default: Surat city center
   const [isClient, setIsClient] = useState(false)
-  const [route, setRoute] = useState(null)
   const [isLoadingRoute, setIsLoadingRoute] = useState(false)
   const [locationPermission, setLocationPermission] = useState('prompt') // 'prompt', 'granted', 'denied')
   const [showNoParkingDialog, setShowNoParkingDialog] = useState(false)
