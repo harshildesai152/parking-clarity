@@ -538,7 +538,7 @@ const MapView = ({
 
       {/* Selected Area Info */}
       {selectedArea && !selectedArea.isCurrentLocation && (
-        <div className="absolute bottom-[3.5rem] sm:bottom-4 left-2 sm:left-4 right-2 sm:right-auto bg-white rounded-lg shadow-lg p-3 sm:p-4 max-w-sm z-[1000]">
+        <div className="absolute bottom-[4.5rem] sm:bottom-4 left-2 sm:left-4 right-2 sm:right-auto bg-white rounded-lg shadow-lg p-3 sm:p-4 max-w-sm z-[1000]">
           <div className="flex items-start justify-between mb-2">
             <h3 className="font-semibold text-gray-900 text-sm sm:text-base pr-2">{selectedArea.name}</h3>
             <button
@@ -551,7 +551,7 @@ const MapView = ({
             </button>
           </div>
           <div className="text-xs sm:text-sm text-gray-600">
-            <p>{selectedArea.category} • {selectedArea.distance} km away</p>
+            <p>{selectedArea.category} • {parseFloat(selectedArea.distance).toFixed(3)} km away</p>
             <p className="mt-1">{selectedArea.description}</p>
           </div>
           <button
@@ -588,7 +588,7 @@ const MapView = ({
 
       {/* Route Control */}
       {route && (
-        <div className="absolute top-16 sm:top-20 left-2 sm:left-4 bg-white rounded-lg shadow-lg p-2 sm:p-3 z-[1000]">
+        <div className="absolute top-20 sm:top-24 left-12 sm:left-4 bg-white rounded-lg shadow-lg p-2 sm:p-3 z-[1000]">
           <button
             onClick={() => setRoute(null)}
             className="flex items-center gap-2 text-xs sm:text-sm text-gray-600 hover:text-gray-900 min-h-[44px] px-2"
