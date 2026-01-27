@@ -867,7 +867,7 @@ function App() {
                 {/* Tab Content */}
                 {listViewTab === 'parking' ? (
                   <ParkingList 
-                    parkingData={allParkingData} // Use allParkingData for list view
+                    parkingData={parkingData} // Use filtered parkingData for list view
                     isLoading={isLoading}
                     selectedArea={selectedArea}
                     setSelectedArea={setSelectedArea}
@@ -881,7 +881,7 @@ function App() {
                     clearAllFilters={clearAllFilters}
                     searchQuery={searchQuery}
                     setSearchQuery={setSearchQuery}
-                    showAllData={true} 
+                    showAllData={false} // Use filtered data
                     showOnlyReported={showOnlyReported} 
                     searchRadius={searchRadius}
                     refreshData={refreshData} // Added refresh callback
