@@ -17,8 +17,9 @@ L.Icon.Default.mergeOptions({
 })
 
 // MapController component to handle map interactions
-const MapController = ({ selectedArea, route }) => {
+const MapController = ({ selectedArea, route, userGeolocation, locationPermission }) => {
   const map = useMap()
+  const [hasZoomedToLocation, setHasZoomedToLocation] = useState(false)
 
   useEffect(() => {
     if (selectedArea && !route) {
@@ -55,6 +56,17 @@ const MapController = ({ selectedArea, route }) => {
       })
     }
   }, [selectedArea, route, map])
+
+  // Zoom to live location when it's first fetched
+  useEffect(() => {
+    if (userGeolocation && locationPermission === 'granted' && !hasZoomedToLocation) {
+      map.flyTo([userGeolocation.lat, userGeolocation.lng], 15, {
+        duration: 1.5,
+        easeLinearity: 0.5
+      })
+      setHasZoomedToLocation(true)
+    }
+  }, [userGeolocation, locationPermission, hasZoomedToLocation, map])
 
   return null
 }
@@ -100,6 +112,8 @@ const MapView = ({
   const [route, setRoute] = useState(null)
   const [isLoadingRoute, setIsLoadingRoute] = useState(false)
   const [locationPermission, setLocationPermission] = useState('prompt') // 'prompt', 'granted', 'denied')
+  const [showNoParkingDialog, setShowNoParkingDialog] = useState(false)
+  const [dialogDismissed, setDialogDismissed] = useState(false)
   const { location: userGeolocation, error: locationError, loading: locationLoading } = useGeolocation()
   const { toggleFavorite, isFavorite } = useFavorites()
 
@@ -134,11 +148,18 @@ const MapView = ({
       });
 
       setParkingWithDistance(updatedParkingData);
+
+      // Check if there are any parking spots within 5KM
+      const nearbyParking = updatedParkingData.filter(area => area.distance <= 5);
+      setShowNoParkingDialog(nearbyParking.length === 0 && !dialogDismissed);
     } else {
-      // If no user location, use original data
+      // If no user location, use original data and hide dialog
       setParkingWithDistance(normalizedParkingData);
+      setShowNoParkingDialog(false);
+      // Reset dismissed state when location is lost
+      setDialogDismissed(false);
     }
-  }, [userGeolocation, normalizedParkingData]);
+  }, [userGeolocation, normalizedParkingData, dialogDismissed]);
   const mapRef = useRef(null)
 
   // Auto-center map on first result when data arrives
@@ -218,7 +239,8 @@ const MapView = ({
     
     setIsLoadingRoute(true)
     try {
-      const routePath = await generateRoute(userLocation, parkingArea.coordinates)
+      const currentLocation = userGeolocation ? [userGeolocation.lat, userGeolocation.lng] : userLocation
+      const routePath = await generateRoute(currentLocation, parkingArea.coordinates)
       setRoute(routePath)
     } catch (error) {
       console.error('Failed to generate route:', error)
@@ -341,11 +363,11 @@ const MapView = ({
       )}
       <MapContainer
         ref={mapRef}
-        center={userLocation}
+        center={userGeolocation ? [userGeolocation.lat, userGeolocation.lng] : userLocation}
         zoom={13}
         style={{ height: '100%', width: '100%' }}
       >
-        <MapController selectedArea={selectedArea} route={route} />
+        <MapController selectedArea={selectedArea} route={route} userGeolocation={userGeolocation} locationPermission={locationPermission} />
         
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -353,7 +375,7 @@ const MapView = ({
         />
 
         {/* User Location */}
-        <Marker position={userLocation} icon={createUserIcon()}>
+        <Marker position={userGeolocation ? [userGeolocation.lat, userGeolocation.lng] : userLocation} icon={createUserIcon()}>
           <Popup>
             <div className="text-sm">
               <strong>Your Location</strong>
@@ -365,7 +387,7 @@ const MapView = ({
 
         {/* Search radius circle */}
         <Circle
-          center={userLocation}
+          center={userGeolocation ? [userGeolocation.lat, userGeolocation.lng] : userLocation}
           radius={3000} // 3km radius
           pathOptions={{
             color: '#3b82f6',
@@ -580,6 +602,34 @@ const MapView = ({
             </svg>
             Clear Route
           </button>
+        </div>
+      )}
+
+      {/* No Parking Spots Dialog */}
+      {showNoParkingDialog && userGeolocation && (
+        <div className="absolute bottom-2 sm:bottom-4 right-2 sm:right-4 bg-white rounded-lg shadow-lg p-3 sm:p-4 max-w-xs z-[1000] animate-slide-up">
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0">
+              <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
+                <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+            </div>
+            <div className="flex-1">
+              <h3 className="text-sm font-semibold text-gray-900 mb-1">No Parking Nearby</h3>
+              <p className="text-xs text-gray-600 mb-3">No parking spots were registered nearby within 5KM of your current location.</p>
+              <button
+                onClick={() => {
+                  setShowNoParkingDialog(false);
+                  setDialogDismissed(true);
+                }}
+                className="text-xs bg-orange-500 text-white px-3 py-1.5 rounded-md hover:bg-orange-600 transition-colors"
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
