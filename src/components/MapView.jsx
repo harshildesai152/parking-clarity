@@ -120,6 +120,24 @@ const MapView = ({
   const { location: userGeolocation, error: locationError, loading: locationLoading } = useGeolocation()
   const { toggleFavorite, isFavorite } = useFavorites()
 
+  // Calculate distance from user location to selected area
+  const getDistanceFromUser = (area) => {
+    if (!area || !area.coordinates) return 0
+    
+    const userCoords = userGeolocation ? [userGeolocation.lat, userGeolocation.lng] : userLocation
+    if (!userCoords || userCoords.length !== 2) return 0
+    
+    return calculateDistance(userCoords[0], userCoords[1], area.coordinates[0], area.coordinates[1])
+  }
+
+  // Update selected area when user location changes to recalculate distance
+  useEffect(() => {
+    if (selectedArea && (userGeolocation || userLocation)) {
+      // Force re-render to update distance display
+      setSelectedArea(prev => prev ? {...prev} : null)
+    }
+  }, [userGeolocation, userLocation])
+
   // Calculate distances and handle "no parking nearby" logic using useMemo
   const parkingWithDistance = useMemo(() => {
     let results = normalizedParkingData;
@@ -468,7 +486,7 @@ const MapView = ({
             <Popup>
               <div className="text-xs sm:text-sm max-w-[200px] sm:max-w-xs p-1 sm:p-2">
                 <div className="font-semibold text-gray-900 mb-1 text-sm sm:text-base">{area.name}</div>
-                <div className="text-xs text-gray-500 mb-2">{area.category} • {formatDistance(area.distance)}</div>
+                <div className="text-xs text-gray-500 mb-2">{area.category} • {formatDistance(getDistanceFromUser(area))}</div>
 
                 <div className={`inline-block px-2 py-1 rounded-full text-xs font-medium mb-2 ${
                   area.status === 'available' ? 'bg-green-100 text-green-800' :
@@ -552,7 +570,7 @@ const MapView = ({
             </button>
           </div>
           <div className="text-xs sm:text-sm text-gray-600">
-            <p>{selectedArea.category} • {parseFloat(selectedArea.distance).toFixed(3)} km away</p>
+            <p>{selectedArea.category} • {getDistanceFromUser(selectedArea).toFixed(3)} km away</p>
             <p className="mt-1">{selectedArea.description}</p>
           </div>
           <button
