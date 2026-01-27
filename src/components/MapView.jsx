@@ -538,7 +538,7 @@ const MapView = ({
 
       {/* Selected Area Info */}
       {selectedArea && !selectedArea.isCurrentLocation && (
-        <div className="absolute bottom-2 sm:bottom-4 left-2 sm:left-4 right-2 sm:right-auto bg-white rounded-lg shadow-lg p-3 sm:p-4 max-w-sm z-[1000]">
+        <div className="absolute bottom-[3.5rem] sm:bottom-4 left-2 sm:left-4 right-2 sm:right-auto bg-white rounded-lg shadow-lg p-3 sm:p-4 max-w-sm z-[1000]">
           <div className="flex items-start justify-between mb-2">
             <h3 className="font-semibold text-gray-900 text-sm sm:text-base pr-2">{selectedArea.name}</h3>
             <button
