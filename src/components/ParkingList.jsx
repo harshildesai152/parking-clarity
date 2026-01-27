@@ -78,7 +78,10 @@ import LoginModal from './LoginModal'
   const parkingWithDistance = useMemo(() => {
     let results = normalizedParkingData;
     
-    if (userLocation && normalizedParkingData.length > 0) {
+    // Use live geolocation if available, otherwise fall back to default location (Surat city center)
+    const currentLocation = userGeolocation || { lat: 21.2000, lng: 72.8400 };
+    
+    if (currentLocation && normalizedParkingData.length > 0) {
       results = normalizedParkingData.map(area => {
         let areaLat, areaLng;
         if (area.coordinates && Array.isArray(area.coordinates) && area.coordinates.length === 2) {
@@ -90,7 +93,7 @@ import LoginModal from './LoginModal'
           return area;
         }
 
-        const distance = calculateDistance(userLocation.lat, userLocation.lng, areaLat, areaLng);
+        const distance = calculateDistance(currentLocation.lat, currentLocation.lng, areaLat, areaLng);
         
         return {
           ...area,
@@ -99,7 +102,7 @@ import LoginModal from './LoginModal'
       });
 
       // Apply radius filter if not 'all'
-      if (searchRadius !== 'all' && userLocation) {
+      if (searchRadius !== 'all' && currentLocation) {
         const radiusInKm = parseInt(searchRadius) / 1000;
         results = results.filter(area => area.distance <= radiusInKm);
       }
@@ -109,7 +112,7 @@ import LoginModal from './LoginModal'
     }
     
     return results;
-  }, [userLocation, normalizedParkingData, searchRadius]);
+  }, [userGeolocation, normalizedParkingData, searchRadius]);
 
   const handleCardClick = (parkingArea) => {
     if (fullWidth) {

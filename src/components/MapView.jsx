@@ -83,7 +83,8 @@ const MapView = ({
   parkingDuration = null,
   filterByAvailability = null,
   route = null,
-  setRoute = null
+  setRoute = null,
+  searchRadius = 'all'
 }) => {
   // Normalize parking data to match UI expectations
   const normalizedParkingData = useMemo(() => {
@@ -142,7 +143,10 @@ const MapView = ({
   const parkingWithDistance = useMemo(() => {
     let results = normalizedParkingData;
     
-    if (userGeolocation && normalizedParkingData.length > 0) {
+    // Use live geolocation if available, otherwise fall back to default location
+    const currentLocation = userGeolocation || { lat: userLocation[0], lng: userLocation[1] };
+    
+    if (currentLocation && normalizedParkingData.length > 0) {
       results = normalizedParkingData.map(area => {
         let areaLat, areaLng;
         if (area.coordinates && Array.isArray(area.coordinates) && area.coordinates.length === 2) {
@@ -154,13 +158,19 @@ const MapView = ({
           return area;
         }
 
-        const distance = calculateDistance(userGeolocation.lat, userGeolocation.lng, areaLat, areaLng);
+        const distance = calculateDistance(currentLocation.lat, currentLocation.lng, areaLat, areaLng);
         
         return {
           ...area,
           distance: distance
         };
       });
+
+      // Apply radius filter if not 'all'
+      if (searchRadius !== 'all' && currentLocation) {
+        const radiusInKm = parseInt(searchRadius) / 1000;
+        results = results.filter(area => area.distance <= radiusInKm);
+      }
 
       // Update dialog state based on calculation
       const nearbyParking = results.filter(area => area.distance <= 5);
@@ -169,12 +179,10 @@ const MapView = ({
       } else {
         setShowNoParkingDialog(false);
       }
-    } else {
-      setShowNoParkingDialog(false);
     }
     
     return results;
-  }, [userGeolocation, normalizedParkingData, dialogDismissed]);
+  }, [userGeolocation, userLocation, normalizedParkingData, searchRadius]);
   const mapRef = useRef(null)
 
   // Auto-center map on first result when data arrives
