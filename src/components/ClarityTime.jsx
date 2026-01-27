@@ -43,7 +43,7 @@ const ClarityTime = ({ currentTime, setCurrentTime, isSimulationEnabled, setIsSi
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-3 sm:p-4">
       <div className="flex items-center justify-between mb-3 sm:mb-4">
-        <h3 className="text-base sm:text-lg font-semibold text-gray-900">CLARITY TIME</h3>
+        <h3 className="text-base sm:text-lg font-semibold text-gray-900">Filter by Time</h3>
         
         {/* Simulation Checkbox */}
         <label className="flex items-center gap-2 cursor-pointer">

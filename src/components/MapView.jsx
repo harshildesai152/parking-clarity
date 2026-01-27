@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { MapContainer, TileLayer, Marker, Popup, Circle, Polyline, useMap } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import './MapView.css'
@@ -84,28 +84,30 @@ const MapView = ({
   filterByAvailability = null 
 }) => {
   // Normalize parking data to match UI expectations
-  const normalizedParkingData = parkingData
-    .filter(area => {
-      // Filter out areas with invalid or missing coordinates
-      if (area.location && area.location.lat && area.location.lng) {
-        return true;
-      }
-      if (area.coordinates && Array.isArray(area.coordinates) && area.coordinates.length === 2) {
-        return true;
-      }
-      return false;
-    })
-    .map(area => ({
-      ...area,
-      id: area._id || area.id,
-      coordinates: area.location ? [area.location.lat, area.location.lng] : area.coordinates,
-      // Map "bike" to "motorcycle" in vehicleTypes
-      vehicleTypes: (area.vehicleTypes || []).map(v => v === 'bike' ? 'motorcycle' : v),
-      status: calculateStatus(area, currentTime),
-      // Ensure all required fields exist
-      distance: area.distance || 0,
-      operatingHours: area.operatingHours ? (typeof area.operatingHours === 'string' ? area.operatingHours : '24/7') : 'N/A'
-    }))
+  const normalizedParkingData = useMemo(() => {
+    return parkingData
+      .filter(area => {
+        // Filter out areas with invalid or missing coordinates
+        if (area.location && area.location.lat && area.location.lng) {
+          return true;
+        }
+        if (area.coordinates && Array.isArray(area.coordinates) && area.coordinates.length === 2) {
+          return true;
+        }
+        return false;
+      })
+      .map(area => ({
+        ...area,
+        id: area._id || area.id,
+        coordinates: area.location ? [area.location.lat, area.location.lng] : area.coordinates,
+        // Map "bike" to "motorcycle" in vehicleTypes
+        vehicleTypes: (area.vehicleTypes || []).map(v => v === 'bike' ? 'motorcycle' : v),
+        status: calculateStatus(area, currentTime),
+        // Ensure all required fields exist
+        distance: area.distance || 0,
+        operatingHours: area.operatingHours ? (typeof area.operatingHours === 'string' ? area.operatingHours : '24/7') : 'N/A'
+      }))
+  }, [parkingData, currentTime])
 
   const [userLocation, setUserLocation] = useState([21.2000, 72.8400]) // Default: Surat city center
   const [isClient, setIsClient] = useState(false)
@@ -117,15 +119,12 @@ const MapView = ({
   const { location: userGeolocation, error: locationError, loading: locationLoading } = useGeolocation()
   const { toggleFavorite, isFavorite } = useFavorites()
 
-  // Calculate distances when user location or parking data changes
-  const [parkingWithDistance, setParkingWithDistance] = useState(normalizedParkingData)
-
-  useEffect(() => {
+  // Calculate distances and handle "no parking nearby" logic using useMemo
+  const parkingWithDistance = useMemo(() => {
+    let results = normalizedParkingData;
+    
     if (userGeolocation && normalizedParkingData.length > 0) {
-      const updatedParkingData = normalizedParkingData.map(area => {
-        let distance = 0;
-        
-        // Get parking area coordinates
+      results = normalizedParkingData.map(area => {
         let areaLat, areaLng;
         if (area.coordinates && Array.isArray(area.coordinates) && area.coordinates.length === 2) {
           [areaLat, areaLng] = area.coordinates;
@@ -133,13 +132,10 @@ const MapView = ({
           areaLat = area.location.lat;
           areaLng = area.location.lng;
         } else {
-          // If no coordinates available, keep original distance or set to 0
-          distance = area.distance || 0;
-          return { ...area, distance };
+          return area;
         }
 
-        // Calculate distance using Haversine formula
-        distance = calculateDistance(userGeolocation.lat, userGeolocation.lng, areaLat, areaLng);
+        const distance = calculateDistance(userGeolocation.lat, userGeolocation.lng, areaLat, areaLng);
         
         return {
           ...area,
@@ -147,18 +143,18 @@ const MapView = ({
         };
       });
 
-      setParkingWithDistance(updatedParkingData);
-
-      // Check if there are any parking spots within 5KM
-      const nearbyParking = updatedParkingData.filter(area => area.distance <= 5);
-      setShowNoParkingDialog(nearbyParking.length === 0 && !dialogDismissed);
+      // Update dialog state based on calculation
+      const nearbyParking = results.filter(area => area.distance <= 5);
+      if (nearbyParking.length === 0 && !dialogDismissed) {
+        setShowNoParkingDialog(true);
+      } else {
+        setShowNoParkingDialog(false);
+      }
     } else {
-      // If no user location, use original data and hide dialog
-      setParkingWithDistance(normalizedParkingData);
       setShowNoParkingDialog(false);
-      // Reset dismissed state when location is lost
-      setDialogDismissed(false);
     }
+    
+    return results;
   }, [userGeolocation, normalizedParkingData, dialogDismissed]);
   const mapRef = useRef(null)
 
@@ -569,7 +565,7 @@ const MapView = ({
       )}
 
       {/* Location Permission Status */}
-      <div className="absolute top-4 left-2 sm:left-4 bg-white rounded-lg shadow-lg p-2 sm:p-3 z-[1000]">
+      <div className="absolute top-4 left-12 sm:left-4 bg-white rounded-lg shadow-lg p-2 sm:p-3 z-[1000]">
         <div className="flex items-center gap-2 text-xs sm:text-sm">
           {locationPermission === 'granted' ? (
             <>
@@ -607,7 +603,7 @@ const MapView = ({
 
       {/* No Parking Spots Dialog */}
       {showNoParkingDialog && userGeolocation && (
-        <div className="absolute bottom-2 sm:bottom-4 right-2 sm:right-4 bg-white rounded-lg shadow-lg p-3 sm:p-4 max-w-xs z-[1000] animate-slide-up">
+        <div className="absolute bottom-4 sm:bottom-4 left-2 sm:right-4 right-2 bg-white rounded-lg shadow-lg p-3 sm:p-4 max-w-sm z-[1000] animate-slide-up mx-2">
           <div className="flex items-start gap-3">
             <div className="flex-shrink-0">
               <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
@@ -618,13 +614,13 @@ const MapView = ({
             </div>
             <div className="flex-1">
               <h3 className="text-sm font-semibold text-gray-900 mb-1">No Parking Nearby</h3>
-              <p className="text-xs text-gray-600 mb-3">No parking spots were registered nearby within 5KM of your current location.</p>
+              <p className="text-xs sm:text-sm text-gray-600 mb-3">No parking spots were registered nearby within 5KM of your current location.</p>
               <button
                 onClick={() => {
                   setShowNoParkingDialog(false);
                   setDialogDismissed(true);
                 }}
-                className="text-xs bg-orange-500 text-white px-3 py-1.5 rounded-md hover:bg-orange-600 transition-colors"
+                className="text-xs sm:text-sm bg-orange-500 text-white px-3 py-1.5 rounded-md hover:bg-orange-600 transition-colors"
               >
                 Dismiss
               </button>
