@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { toast } from 'react-toastify'
 import { useFavorites } from '../contexts/FavoritesContext'
 import { useReports } from '../contexts/ReportsContext'
@@ -32,29 +32,32 @@ import LoginModal from './LoginModal'
   refreshData // Added refresh callback
 }) => {
   // Normalize parking data to match UI expectations
-  const normalizedParkingData = parkingData
-    .filter(area => {
-      // Filter out areas with invalid or missing coordinates
-      if (area.location && area.location.lat && area.location.lng) {
-        return true;
-      }
-      if (area.coordinates && Array.isArray(area.coordinates) && area.coordinates.length === 2) {
-        return true;
-      }
-      return false;
-    })
-    .map(area => ({
-      ...area,
-      id: area._id || area.id,
-      coordinates: area.location ? [area.location.lat, area.location.lng] : area.coordinates,
-      // Map "bike" to "motorcycle" in vehicleTypes
-      vehicleTypes: (area.vehicleTypes || []).map(v => v === 'bike' ? 'motorcycle' : v),
-      status: calculateStatus(area, currentTime),
-      // Ensure all required fields exist
-      distance: area.distance || 0,
-      // Keep operatingHours as object, don't convert to string
-      operatingHours: area.operatingHours || {}
-    }))
+  const normalizedParkingData = useMemo(() => {
+    return parkingData
+      .filter(area => {
+        // Filter out areas with invalid or missing coordinates
+        if (area.location && area.location.lat && area.location.lng) {
+          return true;
+        }
+        if (area.coordinates && Array.isArray(area.coordinates) && area.coordinates.length === 2) {
+          return true;
+        }
+        return false;
+      })
+      .map(area => ({
+        ...area,
+        id: area._id || area.id,
+        coordinates: area.location ? [area.location.lat, area.location.lng] : area.coordinates,
+        // Use Set to ensure unique vehicle types (e.g., if both 'bike' and 'motorcycle' exist)
+        vehicleTypes: [...new Set((area.vehicleTypes || []).map(v => v === 'bike' ? 'motorcycle' : v))],
+        status: calculateStatus(area, currentTime),
+        // Ensure all required fields exist
+        distance: area.distance || 0,
+        // Keep operatingHours as object, don't convert to string
+        operatingHours: area.operatingHours || {}
+      }))
+  }, [parkingData, currentTime])
+
   const [availabilityModal, setAvailabilityModal] = useState(null)
   const [reportModal, setReportModal] = useState(null)
   const [reportReason, setReportReason] = useState('')
@@ -65,18 +68,16 @@ import LoginModal from './LoginModal'
   
   const { toggleFavorite, isFavorite } = useFavorites()
   const { addReport } = useReports()
-  const { isAuthenticated, token } = useAuth()
+  const { isAuthenticated, token, logout } = useAuth()
   const { location: userLocation, error: locationError, loading: locationLoading } = useGeolocation()
 
-  // Calculate distances when user location or parking data changes
-  const [parkingWithDistance, setParkingWithDistance] = useState(normalizedParkingData)
-
-  useEffect(() => {
+  // Calculate distances and apply radius filter using useMemo to avoid infinite re-render loop
+  // This replaces the useEffect and useState(parkingWithDistance) combo
+  const parkingWithDistance = useMemo(() => {
+    let results = normalizedParkingData;
+    
     if (userLocation && normalizedParkingData.length > 0) {
-      const updatedParkingData = normalizedParkingData.map(area => {
-        let distance = 0;
-        
-        // Get parking area coordinates
+      results = normalizedParkingData.map(area => {
         let areaLat, areaLng;
         if (area.coordinates && Array.isArray(area.coordinates) && area.coordinates.length === 2) {
           [areaLat, areaLng] = area.coordinates;
@@ -84,13 +85,10 @@ import LoginModal from './LoginModal'
           areaLat = area.location.lat;
           areaLng = area.location.lng;
         } else {
-          // If no coordinates available, keep original distance or set to 0
-          distance = area.distance || 0;
-          return { ...area, distance };
+          return area;
         }
 
-        // Calculate distance using Haversine formula
-        distance = calculateDistance(userLocation.lat, userLocation.lng, areaLat, areaLng);
+        const distance = calculateDistance(userLocation.lat, userLocation.lng, areaLat, areaLng);
         
         return {
           ...area,
@@ -99,21 +97,16 @@ import LoginModal from './LoginModal'
       });
 
       // Apply radius filter if not 'all'
-      let filteredData = updatedParkingData;
       if (searchRadius !== 'all' && userLocation) {
-        const radiusInKm = parseInt(searchRadius) / 1000; // Convert meters to km
-        filteredData = updatedParkingData.filter(area => {
-          return area.distance <= radiusInKm;
-        });
+        const radiusInKm = parseInt(searchRadius) / 1000;
+        results = results.filter(area => area.distance <= radiusInKm);
       }
 
       // Sort by distance
-      filteredData.sort((a, b) => a.distance - b.distance);
-      setParkingWithDistance(filteredData);
-    } else {
-      // If no user location, use original data
-      setParkingWithDistance(normalizedParkingData);
+      results = [...results].sort((a, b) => a.distance - b.distance);
     }
+    
+    return results;
   }, [userLocation, normalizedParkingData, searchRadius]);
 
   const handleCardClick = (parkingArea) => {
@@ -197,6 +190,12 @@ import LoginModal from './LoginModal'
           
           // Trigger re-fetch of parking data to show updated counts
           if (refreshData) refreshData();
+        } else if (response.status === 401) {
+          // Handle invalid token - remove token and redirect to login
+          logout();
+          toast.error('Session expired. Please login again.');
+          closeReportModal();
+          setIsLoginModalOpen(true);
         } else {
           const errorData = await response.json();
           toast.error(`Error: ${errorData.error || 'Failed to submit report'}`);
@@ -378,7 +377,7 @@ import LoginModal from './LoginModal'
                         ({area.vehicleTypes.map(type => {
                           const capacityInfo = area.capacity[type];
                           return capacityInfo && typeof capacityInfo === 'object' 
-                            ? `${type}: ${capacityInfo.available || capacityInfo.total || 0}`
+                            ? `${type}: ${capacityInfo.available ?? capacityInfo.total ?? 0}`
                             : type;
                         }).join(', ')})
                       </span>
@@ -750,8 +749,19 @@ const AvailabilityDetailModal = ({ parkingArea, onClose }) => {
                 <h4 className="font-semibold text-gray-900 mb-2">Capacity Information</h4>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Total Capacity:</span>
-                    <span className="font-medium text-blue-600">{parkingArea.capacity?.total || Object.values(parkingArea.capacity || {}).reduce((sum, val) => sum + (typeof val === 'number' ? val : 0), 0)} spots</span>
+                  
+                  </div>
+                  <div className="flex justify-between bg-blue-50 p-2 rounded-md mt-1">
+                    <span className="text-blue-800 font-semibold">Total Available:</span>
+                    <span className="font-bold text-green-600">
+                      {parkingArea.vehicleTypes?.reduce((sum, type) => {
+                        const cap = parkingArea.capacity?.[type];
+                        if (cap && typeof cap === 'object') {
+                          return sum + (typeof cap.available === 'number' ? cap.available : 0);
+                        }
+                        return sum;
+                      }, 0)} spots
+                    </span>
                   </div>
                   {parkingArea.vehicleTypes?.map(vehicleType => {
                     const capacityInfo = parkingArea.capacity?.[vehicleType];
@@ -771,7 +781,7 @@ const AvailabilityDetailModal = ({ parkingArea, onClose }) => {
                           <span>{vehicleIcons[vehicleType] || '🚗'}</span>
                           {vehicleType.charAt(0).toUpperCase() + vehicleType.slice(1)}:
                         </span>
-                        <span className="font-medium text-gray-900">{capacityInfo.available || capacityInfo.total || 0} spots</span>
+                        <span className="font-medium text-gray-900">{capacityInfo.available ?? 0} available <span className="text-gray-400 font-normal">/ {capacityInfo.total ?? 0} total</span></span>
                       </div>
                     );
                   })}
@@ -804,7 +814,7 @@ const AvailabilityDetailModal = ({ parkingArea, onClose }) => {
           </div>
 
           {/* Weekly Statistics */}
-          <div className="bg-blue-50 p-6 border-b">
+          {/* <div className="bg-blue-50 p-6 border-b">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Weekly Overview</h3>
             <div className="grid grid-cols-3 gap-4">
               <div className="bg-white rounded-lg p-4 text-center shadow-sm">
@@ -820,7 +830,7 @@ const AvailabilityDetailModal = ({ parkingArea, onClose }) => {
                 <div className="text-sm text-gray-600">Festival Days</div>
               </div>
             </div>
-          </div>
+          </div> */}
 
           {/* Day-wise Availability */}
           <div className="p-6 bg-gradient-to-br from-gray-50 to-blue-50">
