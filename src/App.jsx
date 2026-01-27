@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { ToastContainer } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
 import ClarityTime from './components/ClarityTime'
@@ -13,6 +14,7 @@ import { AuthProvider } from './contexts/AuthContext'
 import './App.css'
 
 function App() {
+  const navigate = useNavigate()
   const [selectedArea, setSelectedArea] = useState(null)
   const [currentTime, setCurrentTime] = useState(new Date())
   const [isSimulationEnabled, setIsSimulationEnabled] = useState(false) // Default: checkbox NOT checked
@@ -463,7 +465,7 @@ function App() {
                 )}
               </div>
 
-              <div className="mb-4">
+              {/* <div className="mb-4">
                 <h2 className="text-lg font-semibold text-gray-900 mb-3">Public Areas Near You</h2>
                 <div className="relative">
                   <input
@@ -477,9 +479,9 @@ function App() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
                 </div>
-              </div>
-
-              <ParkingList
+              </div> */}
+                
+              {/* <ParkingList
                 parkingData={parkingData}
                 isLoading={isLoading}
                 selectedArea={selectedArea}
@@ -495,7 +497,7 @@ function App() {
                 searchQuery={searchQuery}
                 setSearchQuery={setSearchQuery}
                 searchRadius={searchRadius}
-              />
+              /> */}
             </div>
           </div>
         </div>
@@ -796,6 +798,7 @@ function App() {
                   setSearchQuery={setSearchQuery}
                   searchRadius={searchRadius}
                   refreshData={refreshData} // Added refresh callback
+                  navigate={navigate} // Pass navigate function
                 />
               </>
             ) : (
@@ -882,6 +885,7 @@ function App() {
                     showOnlyReported={showOnlyReported} 
                     searchRadius={searchRadius}
                     refreshData={refreshData} // Added refresh callback
+                    navigate={navigate} // Pass navigate function
                   />
                 ) : listViewTab === 'favorites' ? (
                   <FavoritesList 

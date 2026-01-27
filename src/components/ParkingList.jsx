@@ -29,8 +29,10 @@ import LoginModal from './LoginModal'
   showAllData = false, // New prop to show all data without filters
   showOnlyReported = false, // New prop to show only reported spots
   searchRadius = 'all', // New prop for radius filter
-  refreshData // Added refresh callback
+  refreshData, // Added refresh callback
+  navigate // Added navigate prop
 }) => {
+  const { location: userGeolocation } = useGeolocation()
   // Normalize parking data to match UI expectations
   const normalizedParkingData = useMemo(() => {
     return parkingData
@@ -136,6 +138,25 @@ import LoginModal from './LoginModal'
       setSelectedArea(availabilityModal)
       setAvailabilityModal(null)
     }
+  }
+
+  const handleMapClick = (parkingArea) => {
+    // Set the selected area
+    setSelectedArea(parkingArea)
+    
+    // Navigate to map view
+    navigate('/')
+    
+    // Switch to map tab in mobile view by updating URL hash or state
+    setTimeout(() => {
+      // Try to find and click the map tab button
+      const mapTabButton = Array.from(document.querySelectorAll('button')).find(btn => 
+        btn.textContent.includes('Map') || btn.getAttribute('data-tab') === 'map'
+      )
+      if (mapTabButton) {
+        mapTabButton.click()
+      }
+    }, 100)
   }
 
   const openReportModal = (parkingArea) => {
@@ -452,6 +473,19 @@ import LoginModal from './LoginModal'
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
                 Details
+              </button>
+
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleMapClick(area);
+                }}
+                className="px-3 py-2 bg-green-500 text-white text-xs font-medium rounded-lg hover:bg-green-600 transition-colors min-h-[36px] flex items-center justify-center"
+                title="View on Map"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                </svg>
               </button>
             </div>
           </div>

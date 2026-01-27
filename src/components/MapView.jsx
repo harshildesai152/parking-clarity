@@ -620,30 +620,27 @@ const MapView = ({
         </div>
       )}
 
-      {/* No Parking Spots Dialog */}
+      {/* No Parking Spots Notification - Small Line */}
       {showNoParkingDialog && userGeolocation && (
-        <div className="absolute bottom-4 sm:bottom-4 left-2 sm:right-4 right-2 bg-white rounded-lg shadow-lg p-3 sm:p-4 max-w-sm z-[1000] animate-slide-up mx-2">
-          <div className="flex items-start gap-3">
-            <div className="flex-shrink-0">
-              <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
-                <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-              </div>
+        <div className="absolute top-16 bg-orange-50 border border-orange-200 rounded-lg p-2 z-[999]" style={{marginLeft: '3.5rem', marginRight: '7.5rem'}}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <svg className="w-4 h-4 text-orange-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <span className="text-xs text-orange-800 font-medium">No parking spots found within 5KM of your location</span>
             </div>
-            <div className="flex-1">
-              <h3 className="text-sm font-semibold text-gray-900 mb-1">No Parking Nearby</h3>
-              <p className="text-xs sm:text-sm text-gray-600 mb-3">No parking spots were registered nearby within 5KM of your current location.</p>
-              <button
-                onClick={() => {
-                  setShowNoParkingDialog(false);
-                  setDialogDismissed(true);
-                }}
-                className="text-xs sm:text-sm bg-orange-500 text-white px-3 py-1.5 rounded-md hover:bg-orange-600 transition-colors"
-              >
-                Dismiss
-              </button>
-            </div>
+            <button
+              onClick={() => {
+                setShowNoParkingDialog(false);
+                setDialogDismissed(true);
+              }}
+              className="text-orange-600 hover:text-orange-800 p-1 rounded-full hover:bg-orange-100 transition-colors"
+            >
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
         </div>
       )}
