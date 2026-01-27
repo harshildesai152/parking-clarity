@@ -6,6 +6,7 @@ import ParkingList from './components/ParkingList'
 import MapView from './components/MapView'
 import FavoritesList from './components/FavoritesList'
 import ReportsList from './components/ReportsList'
+import LocationSearch from './components/LocationSearch'
 import { FavoritesProvider } from './contexts/FavoritesContext'
 import { ReportsProvider } from './contexts/ReportsContext'
 import { AuthProvider } from './contexts/AuthContext'
@@ -32,6 +33,33 @@ function App() {
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('') // Search query for parking areas
   const [showOnlyReported, setShowOnlyReported] = useState(false) // New filter for reported spots
+  const [isLocationSearchOpen, setIsLocationSearchOpen] = useState(false)
+  const [searchedLocation, setSearchedLocation] = useState(null)
+  const [mapSearchText, setMapSearchText] = useState('') // Text to show in map search bar
+  const [route, setRoute] = useState(null) // Add route state to manage routes
+
+  // Handle location selection from search
+  const handleLocationSelect = (location) => {
+    setSearchedLocation(location)
+    setActiveTab('map') // Switch to map view
+    setUserLocation([location.lat, location.lng])
+    setMapSearchText(location.name) // Set map search bar text
+    
+    // Clear previous selection and route
+    setSelectedArea(null) // Clear previous selection first
+    setRoute(null) // Clear previous route
+    
+    // Set selected area to center map on location
+    setTimeout(() => {
+      setSelectedArea({
+        id: `search-${location.id}`,
+        name: location.name,
+        coordinates: [location.lat, location.lng],
+        category: location.type || 'location',
+        isSearchResult: true
+      })
+    }, 100) // Small delay to ensure clear then set
+  }
 
   // Clear all filters function
   const clearAllFilters = () => {
@@ -151,19 +179,19 @@ function App() {
         {/* Location Search & Radius */}
         <div className="space-y-3 mb-3">
           <div className="flex gap-2">
-            {/* <div className="flex-1 relative">
-              <input
-                type="text"
-                placeholder="Enter location..."
-                value={searchLocation}
-                onChange={(e) => setSearchLocation(e.target.value)}
-                className="w-full px-3 py-2 pl-9 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <svg className="absolute left-2.5 top-2.5 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-            </div> */}
+            <button
+              onClick={() => setIsLocationSearchOpen(true)}
+              className="flex-1 relative bg-gray-50 border border-gray-300 rounded-lg px-4 py-3 text-left text-gray-500 hover:bg-gray-100 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <span className="text-sm">
+                  {mapSearchText || 'Search for parking, places...'}
+                </span>
+              </div>
+            </button>
             {/* <button
               onClick={() => {
                 if (navigator.geolocation) {
@@ -274,7 +302,7 @@ function App() {
                   </div>
                   Search Parking Areas
                 </h3>
-                <div className="relative">
+                {/* <div className="relative">
                   <input
                     type="text"
                     placeholder="Search name or type..."
@@ -285,7 +313,7 @@ function App() {
                   <svg className="absolute left-4 top-3.5 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
-                </div>
+                </div> */}
               </div>
             </div>
 
@@ -577,21 +605,20 @@ function App() {
               <>
                 {/* Location Search & Radius */}
                 <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-                  {/* <h3 className="text-sm font-semibold text-gray-900 mb-3">Location & Radius</h3> */}
                   <div className="space-y-3">
-                    <div className="relative">
-                      {/* <input
-                        type="text"
-                        placeholder="Enter location..."
-                        value={searchLocation}
-                        onChange={(e) => setSearchLocation(e.target.value)}
-                        className="w-full px-3 py-2 pl-9 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      /> */}
-                      {/* <svg className="absolute left-2.5 top-2.5 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                      </svg> */}
-                    </div>
+                    {/* <button
+                      onClick={() => setIsLocationSearchOpen(true)}
+                      className="w-full relative bg-white border border-gray-300 rounded-lg px-4 py-3 text-left text-gray-500 hover:bg-gray-50 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                        <span className="text-sm">
+                          {mapSearchText || 'Search for parking, places...'}
+                        </span>
+                      </div>
+                    </button> */}
 
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-gray-600">Radius:</span>
@@ -791,6 +818,9 @@ function App() {
               selectedParkingTypes={selectedParkingTypes}
               parkingDuration={parkingDuration}
               filterByAvailability={filterByAvailability}
+              route={route}
+              setRoute={setRoute}
+              mapSearchText={mapSearchText}
             />
           ) : (
             <div className="w-full h-full bg-gray-50 p-4 sm:p-6 lg:p-8 overflow-y-auto">
@@ -808,6 +838,16 @@ function App() {
                     }`}
                   >
                     🅿️ All Parking
+                  </button>
+                  <button
+                    onClick={() => setListViewTab('favorites')}
+                    className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                      listViewTab === 'favorites'
+                        ? 'bg-white text-blue-600 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    ⭐ Favorites
                   </button>
                   <button
                     onClick={() => setListViewTab('reports')}
@@ -843,6 +883,13 @@ function App() {
                     searchRadius={searchRadius}
                     refreshData={refreshData} // Added refresh callback
                   />
+                ) : listViewTab === 'favorites' ? (
+                  <FavoritesList 
+                    selectedArea={selectedArea}
+                    setSelectedArea={setSelectedArea}
+                    currentTime={currentTime}
+                    fullWidth={true}
+                  />
                 ) : (
                   <ReportsList />
                 )}
@@ -851,6 +898,13 @@ function App() {
           )}
         </div>
       </div>
+      
+      {/* Location Search Modal */}
+      <LocationSearch
+        isOpen={isLocationSearchOpen}
+        onClose={() => setIsLocationSearchOpen(false)}
+        onLocationSelect={handleLocationSelect}
+      />
       </div>
     </FavoritesProvider>
     </ReportsProvider>
