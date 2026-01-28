@@ -872,7 +872,7 @@ const MapView = ({
 
       {/* Active Location Display */}
       {(liveLocation || confirmedLocation) && (
-        <div className="absolute bottom-4 left-2 sm:left-4 bg-white rounded-lg shadow-lg p-3 sm:p-4 max-w-sm z-[1000]">
+        <div className="absolute bottom-4 left-2 sm:left-4 bg-white rounded-lg shadow-lg p-3 sm:p-4 max-w-sm z-[1000] mb-4">
           <div className="flex items-center justify-between mb-2">
             <h3 className="font-semibold text-gray-900 text-sm sm:text-base flex items-center gap-2">
               <span className="text-blue-500">📍</span>
@@ -908,7 +908,7 @@ const MapView = ({
               </svg>
             </button>
           </div>
-          <div className="text-xs sm:text-sm text-gray-600">
+          {/* <div className="text-xs sm:text-sm text-gray-600">
             <p>
               Lat: {(isAdjustMode && tempLocation ? tempLocation : getActiveLocation())[0].toFixed(4)}, 
               Lng: {(isAdjustMode && tempLocation ? tempLocation : getActiveLocation())[1].toFixed(4)}
@@ -920,7 +920,7 @@ const MapView = ({
                 ? "Location overridden - toggle switch to adjust"
                 : "Live GPS location - toggle switch to adjust"}
             </p>
-          </div>
+          </div> */}
         </div>
       )}
 
@@ -978,10 +978,10 @@ const MapView = ({
 
       {/* Route Control */}
       {route && (
-        <div className="absolute top-20 sm:top-24 left-12 sm:left-4 bg-white rounded-lg shadow-lg p-2 sm:p-3 z-[1000]">
+        <div className="absolute top-32 sm:top-24 left-12 sm:left-4 bg-white rounded-lg shadow-lg py-1 px-1 sm:p-3 z-[1000]">
           <button
             onClick={() => setRoute(null)}
-            className="flex items-center gap-2 text-xs sm:text-sm text-gray-600 hover:text-gray-900 min-h-[44px] px-2"
+            className="flex items-center gap-2 text-xs sm:text-sm text-gray-600 hover:text-gray-900 min-h-[32px] sm:min-h-[44px] px-2"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -993,14 +993,14 @@ const MapView = ({
 
       {/* No Parking Spots Notification - Small Line */}
       {showNoParkingDialog && ((confirmedLocation || liveLocation) || userGeolocation) && (
-        <div className="absolute top-16 bg-orange-50 border border-orange-200 rounded-lg p-2 z-[999]" style={{marginLeft: '3.5rem', marginRight: '7.5rem'}}>
+        <div className="absolute top-16 bg-orange-50 border border-orange-200 rounded-lg py-0.5 px-0.5 z-[999]" style={{marginLeft: '3.5rem', marginRight: '7.5rem'}}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <svg className="w-4 h-4 text-orange-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
               <span className="text-xs text-orange-800 font-medium">
-                No parking spots found within 5KM of {confirmedLocation ? 'overridden location' : 'your current location'}
+                No parking spots found within 5KM 
               </span>
             </div>
             <button
