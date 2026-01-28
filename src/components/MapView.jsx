@@ -143,7 +143,15 @@ const MapView = ({
   route = null,
   setRoute = null,
   searchRadius = 'all',
-  onLocationSelect = null
+  onLocationSelect = null,
+  liveLocation,
+  setLiveLocation,
+  tempLocation,
+  setTempLocation,
+  confirmedLocation,
+  setConfirmedLocation,
+  isAdjustMode,
+  setIsAdjustMode
 }) => {
   // Normalize parking data to match UI expectations
   const normalizedParkingData = useMemo(() => {
@@ -177,10 +185,8 @@ const MapView = ({
   const [locationPermission, setLocationPermission] = useState('prompt') // 'prompt', 'granted', 'denied')
   const [showNoParkingDialog, setShowNoParkingDialog] = useState(false)
   const [dialogDismissed, setDialogDismissed] = useState(false)
-  const [liveLocation, setLiveLocation] = useState(null) // Real GPS location
-  const [tempLocation, setTempLocation] = useState(null) // Temporary location during adjust mode
-  const [confirmedLocation, setConfirmedLocation] = useState(null) // Final overridden location
-  const [isAdjustMode, setIsAdjustMode] = useState(false) // Switch state for adjust mode
+  const markerRefs = useRef({})
+  // Location adjustment state is now passed as props from App.jsx to persist across view changes
   const [mapCenter, setMapCenter] = useState(null) // Track actual map center for pin positioning
   const [pinPosition, setPinPosition] = useState(null) // Track pin pixel position for fixed mode
   const { location: userGeolocation, error: locationError, loading: locationLoading } = useGeolocation()
@@ -281,6 +287,18 @@ const MapView = ({
     return results;
   }, [confirmedLocation, liveLocation, userLocation, normalizedParkingData, searchRadius]);
   const mapRef = useRef(null)
+
+  // Open popup when selectedArea changes (from list view click)
+  useEffect(() => {
+    if (selectedArea && markerRefs.current[selectedArea.id]) {
+      const marker = markerRefs.current[selectedArea.id];
+      if (marker && marker.openPopup) {
+        setTimeout(() => {
+          marker.openPopup();
+        }, 500); // Small delay to ensure map has zoomed to location
+      }
+    }
+  }, [selectedArea]);
 
   // Auto-center map on first result when data arrives
   useEffect(() => {
@@ -725,14 +743,21 @@ const MapView = ({
                 key={area.id}
                 position={area.coordinates}
                 icon={createCustomIcon(area.status, selectedArea?.id === area.id, isFavorite(area.id))}
+                ref={(ref) => {
+                  if (ref) {
+                    markerRefs.current[area.id] = ref;
+                  }
+                }}
                 onclick={() => {
                   console.log('Marker onclick triggered');
-                  handleParkingClick(area);
+                  // Only select the area to show popup, don't show route automatically
+                  setSelectedArea(area);
                 }}
                 eventHandlers={{
                   click: (e) => {
                     console.log('Marker eventHandlers click triggered');
-                    handleParkingClick(area);
+                    // Only select the area to show popup, don't show route automatically
+                    setSelectedArea(area);
                   }
                 }}
               >
@@ -764,21 +789,35 @@ const MapView = ({
                   </div>
                 </div>
 
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggleFavorite(area);
-                  }}
-                  className={`w-full px-2 py-1.5 text-xs font-medium rounded-lg transition-colors flex items-center justify-center gap-1 ${
+                <div className="flex gap-2">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleParkingClick(area);
+                    }}
+                    className="flex-1 px-2 py-1.5 text-xs font-medium rounded-lg transition-colors flex items-center justify-center gap-1 bg-blue-500 text-white hover:bg-blue-600"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                    </svg>
+                    <span className="hidden sm:inline">Route</span>
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleFavorite(area);
+                    }}
+                    className={`flex-1 px-2 py-1.5 text-xs font-medium rounded-lg transition-colors flex items-center justify-center gap-1 ${
                     isFavorite(area.id)
                       ? 'bg-yellow-500 text-white hover:bg-yellow-600'
                       : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                   }`}
-                >
-                  <span className="text-xs">{isFavorite(area.id) ? '⭐' : '☆'}</span>
-                  <span className="hidden sm:inline">{isFavorite(area.id) ? 'Favorited' : 'Add to Favorites'}</span>
-                  <span className="sm:hidden">{isFavorite(area.id) ? 'Favorited' : 'Add to Favorites'}</span>
-                </button>
+                  >
+                    <span className="text-xs">{isFavorite(area.id) ? '⭐' : '☆'}</span>
+                    <span className="hidden sm:inline">{isFavorite(area.id) ? 'Favorited' : 'Add to Favorites'}</span>
+                    <span className="sm:hidden">{isFavorite(area.id) ? 'Favorited' : 'Add to Favorites'}</span>
+                  </button>
+                </div>
               </div>
             </Popup>
           </Marker>
@@ -932,7 +971,7 @@ const MapView = ({
       )}
 
       {/* Selected Area Info */}
-      {selectedArea && !selectedArea.isCurrentLocation && (
+      {/* {selectedArea && !selectedArea.isCurrentLocation && (
         <div className="absolute bottom-[7.5rem] sm:bottom-[6.5rem] left-2 sm:left-4 right-2 sm:right-auto bg-white rounded-lg shadow-lg p-3 sm:p-4 max-w-sm z-[1000] w-64">
           <div className="flex items-start justify-between mb-1 sm:mb-2">
             <h3 className="font-semibold text-gray-900 text-xs sm:text-sm pr-2">{selectedArea.name}</h3>
@@ -959,7 +998,7 @@ const MapView = ({
             {isLoadingRoute ? 'Calculating Route...' : 'Show Route'}
           </button>
         </div>
-      )}
+      )} */}
 
       {/* Location Permission Status */}
       <div className="absolute top-4 left-12 sm:left-4 bg-white rounded-lg shadow-lg p-2 sm:p-3 z-[1000]">
