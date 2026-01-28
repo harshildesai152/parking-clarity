@@ -40,6 +40,12 @@ function App() {
   const [mapSearchText, setMapSearchText] = useState('') // Text to show in map search bar
   const [route, setRoute] = useState(null) // Add route state to manage routes
   const [activeLocation, setActiveLocation] = useState(null) // Active location from MapView (confirmed or live)
+  
+  // Location adjustment state - moved from MapView to persist across view changes
+  const [liveLocation, setLiveLocation] = useState(null) // Real GPS location
+  const [tempLocation, setTempLocation] = useState(null) // Temporary location during adjust mode
+  const [confirmedLocation, setConfirmedLocation] = useState(null) // Final overridden location
+  const [isAdjustMode, setIsAdjustMode] = useState(false) // Switch state for adjust mode
 
   // Handle mobile menu close
   const handleMobileMenuClose = () => {
@@ -326,14 +332,7 @@ function App() {
 
               {/* Search Section */}
               <div className="space-y-2">
-                <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                  <div className="w-7 h-7 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
-                    <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
-                  </div>
-                  Search Parking Areas
-                </h3>
+                
                 {/* <div className="relative">
                   <input
                     type="text"
@@ -350,62 +349,10 @@ function App() {
             </div>
 
             {/* Clear Filters Button - Mobile */}
-            <div className="px-4 pb-4">
-              <button
-                onClick={() => {
-                  clearAllFilters()
-                  setIsMobileMenuOpen(false)
-                }}
-                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-red-500 to-rose-600 text-white rounded-xl hover:from-red-600 hover:to-rose-700 transition-all duration-200 font-semibold text-sm shadow-lg hover:shadow-xl transform hover:scale-105"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-                Clear All Filters
-              </button>
-            </div>
+           
 
             {/* Tab Navigation */}
-            <div className="px-4 pb-4 border-t border-gray-200">
-              <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                <div className="w-7 h-7 bg-gradient-to-r from-purple-500 to-indigo-600 rounded-lg flex items-center justify-center">
-                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                  </svg>
-                </div>
-                View Mode
-              </h3>
-              <div className="flex bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl p-1 shadow-inner">
-                <button
-                  onClick={() => {
-                    setActiveTab('map')
-                    setIsMobileMenuOpen(false)
-                  }}
-                  className={`flex-1 py-3 px-4 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2 ${
-                    activeTab === 'map'
-                      ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg transform scale-105'
-                      : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
-                  }`}
-                >
-                  <span className="text-lg">🗺️</span>
-                  Map
-                </button>
-                <button
-                  onClick={() => {
-                    setActiveTab('list')
-                    setIsMobileMenuOpen(false)
-                  }}
-                  className={`flex-1 py-3 px-4 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2 ${
-                    activeTab === 'list'
-                      ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg transform scale-105'
-                      : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
-                  }`}
-                >
-                  <span className="text-lg">📋</span>
-                  List
-                </button>
-              </div>
-            </div>
+          
 
             {/* Category Filter */}
             <div className="px-4 pb-4">
@@ -494,6 +441,21 @@ function App() {
                   </p>
                 )}
               </div>
+
+               <div className="px-4 pb-4">
+              <button
+                onClick={() => {
+                  clearAllFilters()
+                  setIsMobileMenuOpen(false)
+                }}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-red-500 to-rose-600 text-white rounded-xl hover:from-red-600 hover:to-rose-700 transition-all duration-200 font-semibold text-sm shadow-lg hover:shadow-xl transform hover:scale-105"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                Clear All Filters
+              </button>
+            </div>
 
               {/* <div className="mb-4">
                 <h2 className="text-lg font-semibold text-gray-900 mb-3">Public Areas Near You</h2>
@@ -857,6 +819,14 @@ function App() {
               mapSearchText={mapSearchText}
               searchRadius={searchRadius}
               onLocationSelect={handleMapLocationSelect}
+              liveLocation={liveLocation}
+              setLiveLocation={setLiveLocation}
+              tempLocation={tempLocation}
+              setTempLocation={setTempLocation}
+              confirmedLocation={confirmedLocation}
+              setConfirmedLocation={setConfirmedLocation}
+              isAdjustMode={isAdjustMode}
+              setIsAdjustMode={setIsAdjustMode}
             />
           ) : (
             <div className="w-full h-full bg-gray-50 p-4 sm:p-6 lg:p-8 overflow-y-auto">
