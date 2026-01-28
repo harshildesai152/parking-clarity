@@ -579,15 +579,18 @@ const MapView = ({
   // Handle adjust mode toggle
   const handleAdjustModeToggle = (enabled) => {
     setIsAdjustMode(enabled)
-    if (!enabled) {
-      // Switch turned OFF, clear temporary location
-      setTempLocation(null)
-    } else {
-      // Switch turned ON, initialize tempLocation with current active location
+    if (enabled) {
+      // Switch turned ON, clear route and selected area
+      setRoute(null) // Clear route
+      setSelectedArea(null) // Clear selected area
+      // Initialize tempLocation with current active location
       const activeLocation = getActiveLocation()
       if (activeLocation) {
         setTempLocation(activeLocation)
       }
+    } else {
+      // Switch turned OFF, clear temporary location
+      setTempLocation(null)
     }
   }
 
@@ -872,10 +875,10 @@ const MapView = ({
 
       {/* Active Location Display */}
       {(liveLocation || confirmedLocation) && (
-        <div className="absolute bottom-4 left-2 sm:left-4 bg-white rounded-lg shadow-lg p-3 sm:p-4 max-w-sm z-[1000] mb-4">
+        <div className="absolute bottom-20 right-4 sm:right-4 bg-white rounded-lg shadow-lg p-2 sm:p-3 max-w-sm z-[1000] mb-4">
           <div className="flex items-center justify-between mb-2">
             <h3 className="font-semibold text-gray-900 text-sm sm:text-base flex items-center gap-2">
-              <span className="text-blue-500">📍</span>
+              {/* <span className="text-blue-500">📍</span> */}
               {isAdjustMode ? 'Temporary Location' : (confirmedLocation ? 'Overridden Location' : 'Live Location')}
             </h3>
             <button
@@ -887,6 +890,8 @@ const MapView = ({
                   setConfirmedLocation(null)
                   setTempLocation(null)
                   setIsAdjustMode(false)
+                  setRoute(null) // Clear route
+                  setSelectedArea(null) // Clear selected area
                   if (mapRef.current) {
                     mapRef.current.flyTo(userCoords, 15)
                   }
@@ -895,6 +900,8 @@ const MapView = ({
                   setConfirmedLocation(null)
                   setTempLocation(null)
                   setIsAdjustMode(false)
+                  setRoute(null) // Clear route
+                  setSelectedArea(null) // Clear selected area
                   if (mapRef.current) {
                     mapRef.current.flyTo(userLocation, 15)
                   }
