@@ -734,11 +734,11 @@ const MapView = ({
                 }}
               >
             <Popup>
-              <div className="text-xs sm:text-sm max-w-[200px] sm:max-w-xs p-1 sm:p-2">
-                <div className="font-semibold text-gray-900 mb-1 text-sm sm:text-base">{area.name}</div>
-                <div className="text-xs text-gray-500 mb-2">{area.category} • {formatDistance(getDistanceFromActiveLocation(area))}</div>
+              <div className="text-xs max-w-[160px] sm:max-w-[200px] p-1 sm:p-2">
+                <div className="font-semibold text-gray-900 mb-1 text-xs sm:text-sm">{area.name}</div>
+                <div className="text-xs text-gray-500 mb-1 sm:mb-2">{area.category} • {formatDistance(getDistanceFromActiveLocation(area))}</div>
 
-                <div className={`inline-block px-2 py-1 rounded-full text-xs font-medium mb-2 ${
+                <div className={`inline-block px-1 py-0.5 rounded-full text-xs font-medium mb-1 sm:mb-2 ${
                   area.status === 'available' ? 'bg-green-100 text-green-800' :
                   area.status === 'limited' ? 'bg-yellow-100 text-yellow-800' :
                   'bg-red-100 text-red-800'
@@ -749,10 +749,10 @@ const MapView = ({
                 </div>
 
                 {area.description && (
-                  <p className="text-gray-600 text-xs mb-2">{area.description}</p>
+                  <p className="text-gray-600 text-xs mb-1 sm:mb-2 line-clamp-2">{area.description}</p>
                 )}
 
-                <div className="space-y-1 mb-3">
+                <div className="space-y-1 mb-2 sm:mb-3">
                   <div className="flex items-center gap-1 text-xs text-gray-600">
                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -766,14 +766,15 @@ const MapView = ({
                     e.stopPropagation();
                     toggleFavorite(area);
                   }}
-                  className={`w-full px-2 py-2 text-xs font-medium rounded-lg transition-colors flex items-center justify-center gap-1 ${
+                  className={`w-full px-2 py-1.5 text-xs font-medium rounded-lg transition-colors flex items-center justify-center gap-1 ${
                     isFavorite(area.id)
                       ? 'bg-yellow-500 text-white hover:bg-yellow-600'
                       : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                   }`}
                 >
-                  <span className="text-sm">{isFavorite(area.id) ? '⭐' : '☆'}</span>
-                  {isFavorite(area.id) ? 'Favorited' : 'Add to Favorites'}
+                  <span className="text-xs">{isFavorite(area.id) ? '⭐' : '☆'}</span>
+                  <span className="hidden sm:inline">{isFavorite(area.id) ? 'Favorited' : 'Add to Favorites'}</span>
+                  <span className="sm:hidden">{isFavorite(area.id) ? 'Favorited' : 'Add to Favorites'}</span>
                 </button>
               </div>
             </Popup>
@@ -925,26 +926,28 @@ const MapView = ({
 
       {/* Selected Area Info */}
       {selectedArea && !selectedArea.isCurrentLocation && (
-        <div className="absolute bottom-[7.5rem] sm:bottom-[6.5rem] left-2 sm:left-4 right-2 sm:right-auto bg-white rounded-lg shadow-lg p-3 sm:p-4 max-w-sm z-[1000]">
-          <div className="flex items-start justify-between mb-2">
-            <h3 className="font-semibold text-gray-900 text-sm sm:text-base pr-2">{selectedArea.name}</h3>
+        <div className="absolute bottom-[7.5rem] sm:bottom-[6.5rem] left-2 sm:left-4 right-2 sm:right-auto bg-white rounded-lg shadow-lg p-2 sm:p-4 max-w-sm z-[1000]">
+          <div className="flex items-start justify-between mb-1 sm:mb-2">
+            <h3 className="font-semibold text-gray-900 text-xs sm:text-sm pr-2">{selectedArea.name}</h3>
             <button
               onClick={() => setSelectedArea(null)}
-              className="text-gray-400 hover:text-gray-600 flex-shrink-0 p-1 min-h-[44px] min-w-[44px] flex items-center justify-center"
+              className="text-gray-400 hover:text-gray-600 flex-shrink-0 p-1 min-h-[36px] min-w-[36px] sm:min-h-[44px] sm:min-w-[44px] flex items-center justify-center"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
           </div>
-          <div className="text-xs sm:text-sm text-gray-600">
-            <p>{selectedArea.category} • {getDistanceFromActiveLocation(selectedArea).toFixed(3)} km away</p>
-            <p className="mt-1">{selectedArea.description}</p>
+          <div className="text-xs text-gray-600">
+            <p className="text-xs">{selectedArea.category} • {getDistanceFromActiveLocation(selectedArea).toFixed(3)} km away</p>
+            {selectedArea.description && (
+              <p className="mt-1 text-xs">{selectedArea.description}</p>
+            )}
           </div>
           <button
             onClick={() => handleParkingClick(selectedArea)}
             disabled={isLoadingRoute}
-            className="mt-3 w-full bg-blue-500 text-white px-3 py-3 rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors disabled:bg-blue-300 disabled:cursor-not-allowed min-h-[44px]"
+            className="mt-2 sm:mt-3 w-full bg-blue-500 text-white px-2 py-2 sm:px-3 sm:py-3 rounded-lg text-xs sm:text-sm font-medium hover:bg-blue-600 transition-colors disabled:bg-blue-300 disabled:cursor-not-allowed min-h-[36px] sm:min-h-[44px]"
           >
             {isLoadingRoute ? 'Calculating Route...' : 'Show Route'}
           </button>
