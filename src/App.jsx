@@ -41,6 +41,11 @@ function App() {
   const [route, setRoute] = useState(null) // Add route state to manage routes
   const [activeLocation, setActiveLocation] = useState(null) // Active location from MapView (confirmed or live)
 
+  // Handle mobile menu close
+  const handleMobileMenuClose = () => {
+    setIsMobileMenuOpen(false)
+  }
+
   // Handle location selection from MapView (new system)
   const handleMapLocationSelect = (location) => {
     console.log('Map location selected:', location);
