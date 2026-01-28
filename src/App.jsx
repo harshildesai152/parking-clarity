@@ -39,6 +39,31 @@ function App() {
   const [searchedLocation, setSearchedLocation] = useState(null)
   const [mapSearchText, setMapSearchText] = useState('') // Text to show in map search bar
   const [route, setRoute] = useState(null) // Add route state to manage routes
+  const [activeLocation, setActiveLocation] = useState(null) // Active location from MapView (confirmed or live)
+
+  // Handle location selection from MapView (new system)
+  const handleMapLocationSelect = (location) => {
+    console.log('Map location selected:', location);
+    // Update activeLocation state for distance calculations
+    setActiveLocation([location.lat, location.lng]);
+    
+    // Only update userLocation for confirmed locations (not temporary adjustments)
+    if (location.name === 'Confirmed Location' || location.name === 'Live Location' || location.name === 'Default Location') {
+      setUserLocation([location.lat, location.lng]);
+    }
+    
+    if (location.name === 'Confirmed Location') {
+      setSearchLocation('Overridden Location');
+    } else if (location.name === 'Temporary Location') {
+      setSearchLocation('Adjusting Location');
+    } else if (location.name === 'Live Location') {
+      setSearchLocation('Live GPS Location');
+    } else if (location.name === 'Default Location') {
+      setSearchLocation('Default Location');
+    } else {
+      setSearchLocation(location.name || 'Selected Location');
+    }
+  }
 
   // Handle location selection from search
   const handleLocationSelect = (location) => {
@@ -799,6 +824,7 @@ function App() {
                   searchRadius={searchRadius}
                   refreshData={refreshData} // Added refresh callback
                   navigate={navigate} // Pass navigate function
+                  activeLocation={activeLocation}
                 />
               </>
             ) : (
@@ -825,6 +851,7 @@ function App() {
               setRoute={setRoute}
               mapSearchText={mapSearchText}
               searchRadius={searchRadius}
+              onLocationSelect={handleMapLocationSelect}
             />
           ) : (
             <div className="w-full h-full bg-gray-50 p-4 sm:p-6 lg:p-8 overflow-y-auto">
@@ -873,12 +900,13 @@ function App() {
                     selectedArea={selectedArea}
                     setSelectedArea={setSelectedArea}
                     currentTime={currentTime}
+                    fullWidth={true}
+                    onAreaSelect={handleMobileMenuClose}
                     selectedCategories={selectedCategories}
                     selectedVehicleTypes={selectedVehicleTypes}
                     selectedParkingTypes={selectedParkingTypes}
                     parkingDuration={parkingDuration}
                     filterByAvailability={filterByAvailability}
-                    fullWidth={true}
                     clearAllFilters={clearAllFilters}
                     searchQuery={searchQuery}
                     setSearchQuery={setSearchQuery}
@@ -887,6 +915,7 @@ function App() {
                     searchRadius={searchRadius}
                     refreshData={refreshData} // Added refresh callback
                     navigate={navigate} // Pass navigate function
+                    activeLocation={activeLocation}
                   />
                 ) : listViewTab === 'favorites' ? (
                   <FavoritesList 

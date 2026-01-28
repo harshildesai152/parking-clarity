@@ -30,7 +30,8 @@ import LoginModal from './LoginModal'
   showOnlyReported = false, // New prop to show only reported spots
   searchRadius = 'all', // New prop for radius filter
   refreshData, // Added refresh callback
-  navigate // Added navigate prop
+  navigate, // Added navigate prop
+  activeLocation = null // New prop for active location from MapView
 }) => {
   const { location: userGeolocation } = useGeolocation()
   // Normalize parking data to match UI expectations
@@ -78,8 +79,12 @@ import LoginModal from './LoginModal'
   const parkingWithDistance = useMemo(() => {
     let results = normalizedParkingData;
     
-    // Use live geolocation if available, otherwise fall back to default location (Surat city center)
-    const currentLocation = userGeolocation || { lat: 21.2000, lng: 72.8400 };
+    // Use activeLocation from MapView if available, otherwise fall back to live geolocation or default location
+    const currentLocation = activeLocation 
+      ? { lat: activeLocation[0], lng: activeLocation[1] }
+      : userGeolocation 
+      ? { lat: userGeolocation.lat, lng: userGeolocation.lng }
+      : { lat: 21.2000, lng: 72.8400 }; // Default: Surat city center
     
     if (currentLocation && normalizedParkingData.length > 0) {
       results = normalizedParkingData.map(area => {
@@ -112,7 +117,7 @@ import LoginModal from './LoginModal'
     }
     
     return results;
-  }, [userGeolocation, normalizedParkingData, searchRadius]);
+  }, [activeLocation, userGeolocation, normalizedParkingData, searchRadius]);
 
   const handleCardClick = (parkingArea) => {
     if (fullWidth) {
