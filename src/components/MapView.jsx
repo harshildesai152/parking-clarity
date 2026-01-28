@@ -3,6 +3,7 @@ import { MapContainer, TileLayer, Marker, Popup, Circle, Polyline, useMap } from
 import 'leaflet/dist/leaflet.css'
 import './MapView.css'
 import L from 'leaflet'
+import Switch from 'react-switch'
 import { useFavorites } from '../contexts/FavoritesContext'
 import { calculateStatus } from '../utils/statusUtils'
 import { calculateDistance, formatDistance } from '../utils/distanceUtils'
@@ -71,6 +72,63 @@ const MapController = ({ selectedArea, route, userGeolocation, locationPermissio
   return null
 }
 
+// FixedPinController component to handle truly fixed pin positioning
+const FixedPinController = ({ tempLocation, isAdjustMode, onMapCenterChange }) => {
+  const map = useMap()
+  const [isDragging, setIsDragging] = useState(false)
+  const dragTimeoutRef = useRef(null)
+
+  useEffect(() => {
+    const handleDragStart = () => {
+      setIsDragging(true)
+      if (dragTimeoutRef.current) {
+        clearTimeout(dragTimeoutRef.current)
+      }
+    }
+
+    const handleDragEnd = () => {
+      setIsDragging(false)
+      if (dragTimeoutRef.current) {
+        clearTimeout(dragTimeoutRef.current)
+      }
+      // Update immediately on drag end
+      const center = map.getCenter()
+      onMapCenterChange([center.lat, center.lng])
+    }
+
+    const handleMove = () => {
+      // Update on any map movement (pan, zoom)
+      const center = map.getCenter()
+      onMapCenterChange([center.lat, center.lng])
+    }
+
+    const handleMoveEnd = () => {
+      // Also update on move end for consistency
+      const center = map.getCenter()
+      onMapCenterChange([center.lat, center.lng])
+    }
+
+    map.on('dragstart', handleDragStart)
+    map.on('dragend', handleDragEnd)
+    map.on('move', handleMove) // Update during movement
+    map.on('moveend', handleMoveEnd) // Update after movement
+    map.on('zoomend', handleMoveEnd) // Update after zoom
+
+    return () => {
+      map.off('dragstart', handleDragStart)
+      map.off('dragend', handleDragEnd)
+      map.off('move', handleMove)
+      map.off('moveend', handleMoveEnd)
+      map.off('zoomend', handleMoveEnd)
+      if (dragTimeoutRef.current) {
+        clearTimeout(dragTimeoutRef.current)
+      }
+    }
+  }, [map, onMapCenterChange])
+
+  return null
+}
+
 const MapView = ({ 
   parkingData = [],
   isLoading: isLoadingAPI = false,
@@ -84,7 +142,8 @@ const MapView = ({
   filterByAvailability = null,
   route = null,
   setRoute = null,
-  searchRadius = 'all'
+  searchRadius = 'all',
+  onLocationSelect = null
 }) => {
   // Normalize parking data to match UI expectations
   const normalizedParkingData = useMemo(() => {
@@ -118,35 +177,59 @@ const MapView = ({
   const [locationPermission, setLocationPermission] = useState('prompt') // 'prompt', 'granted', 'denied')
   const [showNoParkingDialog, setShowNoParkingDialog] = useState(false)
   const [dialogDismissed, setDialogDismissed] = useState(false)
+  const [liveLocation, setLiveLocation] = useState(null) // Real GPS location
+  const [tempLocation, setTempLocation] = useState(null) // Temporary location during adjust mode
+  const [confirmedLocation, setConfirmedLocation] = useState(null) // Final overridden location
+  const [isAdjustMode, setIsAdjustMode] = useState(false) // Switch state for adjust mode
+  const [mapCenter, setMapCenter] = useState(null) // Track actual map center for pin positioning
+  const [pinPosition, setPinPosition] = useState(null) // Track pin pixel position for fixed mode
   const { location: userGeolocation, error: locationError, loading: locationLoading } = useGeolocation()
   const { toggleFavorite, isFavorite } = useFavorites()
 
-  // Calculate distance from user location to selected area
-  const getDistanceFromUser = (area) => {
+  // Get the active location for calculations (confirmedLocation if set, otherwise live location)
+  const getActiveLocation = () => {
+    if (confirmedLocation && Array.isArray(confirmedLocation) && confirmedLocation.length === 2) {
+      return confirmedLocation;
+    } else if (liveLocation) {
+      return liveLocation;
+    } else {
+      return userLocation;
+    }
+  };
+
+  // Calculate distance from active location to selected area
+  const getDistanceFromActiveLocation = (area) => {
     if (!area || !area.coordinates) return 0
     
-    const userCoords = userGeolocation ? [userGeolocation.lat, userGeolocation.lng] : userLocation
-    if (!userCoords || userCoords.length !== 2) return 0
+    const activeLocation = getActiveLocation();
+    if (!activeLocation || activeLocation.length !== 2) return 0
     
-    return calculateDistance(userCoords[0], userCoords[1], area.coordinates[0], area.coordinates[1])
+    return calculateDistance(activeLocation[0], activeLocation[1], area.coordinates[0], area.coordinates[1])
   }
 
-  // Update selected area when user location changes to recalculate distance
+  // Update selected area when active location changes to recalculate distance
   useEffect(() => {
-    if (selectedArea && (userGeolocation || userLocation)) {
+    if (selectedArea && (liveLocation || confirmedLocation || userLocation)) {
       // Force re-render to update distance display
       setSelectedArea(prev => prev ? {...prev} : null)
     }
-  }, [userGeolocation, userLocation])
+  }, [confirmedLocation, liveLocation, userLocation])
 
   // Calculate distances and handle "no parking nearby" logic using useMemo
   const parkingWithDistance = useMemo(() => {
     let results = normalizedParkingData;
     
-    // Use live geolocation if available, otherwise fall back to default location
-    const currentLocation = userGeolocation || { lat: userLocation[0], lng: userLocation[1] };
+    // Use confirmedLocation (override) if available, otherwise use live location or default location
+    let activeLocationCoords;
+    if (confirmedLocation && Array.isArray(confirmedLocation) && confirmedLocation.length === 2) {
+      activeLocationCoords = { lat: confirmedLocation[0], lng: confirmedLocation[1] };
+    } else if (liveLocation) {
+      activeLocationCoords = { lat: liveLocation[0], lng: liveLocation[1] };
+    } else {
+      activeLocationCoords = { lat: userLocation[0], lng: userLocation[1] };
+    }
     
-    if (currentLocation && normalizedParkingData.length > 0) {
+    if (activeLocationCoords && normalizedParkingData.length > 0) {
       results = normalizedParkingData.map(area => {
         let areaLat, areaLng;
         if (area.coordinates && Array.isArray(area.coordinates) && area.coordinates.length === 2) {
@@ -158,7 +241,7 @@ const MapView = ({
           return area;
         }
 
-        const distance = calculateDistance(currentLocation.lat, currentLocation.lng, areaLat, areaLng);
+        const distance = calculateDistance(activeLocationCoords.lat, activeLocationCoords.lng, areaLat, areaLng);
         
         return {
           ...area,
@@ -167,14 +250,28 @@ const MapView = ({
       });
 
       // Apply radius filter if not 'all'
-      if (searchRadius !== 'all' && currentLocation) {
+      if (searchRadius !== 'all' && activeLocationCoords) {
         const radiusInKm = parseInt(searchRadius) / 1000;
         results = results.filter(area => area.distance <= radiusInKm);
       }
 
-      // Update dialog state based on calculation
-      const nearbyParking = results.filter(area => area.distance <= 5);
-      if (nearbyParking.length === 0 && !dialogDismissed) {
+      // Update dialog state based on calculation (check against all parking data, not filtered)
+      const allNearbyParking = normalizedParkingData.filter(area => {
+        let areaLat, areaLng;
+        if (area.coordinates && Array.isArray(area.coordinates) && area.coordinates.length === 2) {
+          [areaLat, areaLng] = area.coordinates;
+        } else if (area.location && area.location.lat && area.location.lng) {
+          areaLat = area.location.lat;
+          areaLng = area.location.lng;
+        } else {
+          return false;
+        }
+        
+        const distance = calculateDistance(activeLocationCoords.lat, activeLocationCoords.lng, areaLat, areaLng);
+        return distance <= 5;
+      });
+      
+      if (allNearbyParking.length === 0 && !dialogDismissed) {
         setShowNoParkingDialog(true);
       } else {
         setShowNoParkingDialog(false);
@@ -182,7 +279,7 @@ const MapView = ({
     }
     
     return results;
-  }, [userGeolocation, userLocation, normalizedParkingData, searchRadius]);
+  }, [confirmedLocation, liveLocation, userLocation, normalizedParkingData, searchRadius]);
   const mapRef = useRef(null)
 
   // Auto-center map on first result when data arrives
@@ -195,6 +292,15 @@ const MapView = ({
     }
   }, [parkingData.length === 0 && normalizedParkingData.length > 0]) // Only on first load of data
 
+  // Initialize liveLocation with user's current location when component mounts
+  useEffect(() => {
+    if (userGeolocation && !liveLocation) {
+      setLiveLocation([userGeolocation.lat, userGeolocation.lng])
+    } else if (!userGeolocation && !liveLocation) {
+      setLiveLocation(userLocation)
+    }
+  }, [userGeolocation, userLocation, liveLocation])
+
   useEffect(() => {
     setIsClient(true)
     
@@ -205,11 +311,18 @@ const MapView = ({
           const { latitude, longitude } = position.coords
           setUserLocation([latitude, longitude])
           setLocationPermission('granted')
+          // Set liveLocation if not already set
+          if (!liveLocation) {
+            setLiveLocation([latitude, longitude])
+          }
         },
         (error) => {
           console.error('Error getting location:', error)
           setLocationPermission('denied')
           // Keep using default location (Surat city center)
+          if (!liveLocation) {
+            setLiveLocation(userLocation)
+          }
         },
         {
           enableHighAccuracy: true,
@@ -219,6 +332,9 @@ const MapView = ({
       )
     } else {
       setLocationPermission('denied')
+      if (!liveLocation) {
+        setLiveLocation(userLocation)
+      }
     }
   }, [])
 
@@ -262,8 +378,17 @@ const MapView = ({
     
     setIsLoadingRoute(true)
     try {
-      const currentLocation = userGeolocation ? [userGeolocation.lat, userGeolocation.lng] : userLocation
-      const routePath = await generateRoute(currentLocation, parkingArea.coordinates)
+      // Use confirmedLocation (override) as start point if available, otherwise use live location
+      let activeLocation;
+      if (confirmedLocation && Array.isArray(confirmedLocation) && confirmedLocation.length === 2) {
+        activeLocation = confirmedLocation;
+      } else if (liveLocation) {
+        activeLocation = liveLocation;
+      } else {
+        activeLocation = userLocation;
+      }
+      
+      const routePath = await generateRoute(activeLocation, parkingArea.coordinates)
       setRoute(routePath)
     } catch (error) {
       console.error('Failed to generate route:', error)
@@ -366,6 +491,106 @@ const MapView = ({
     })
   }
 
+  // Update pin position when map moves (only when not in adjust mode)
+  useEffect(() => {
+    if (!isAdjustMode && getActiveLocation() && mapRef.current) {
+      const updatePinPosition = () => {
+        const position = getPinPixelPosition()
+        setPinPosition(position)
+      }
+      
+      // Update immediately
+      updatePinPosition()
+      
+      // Also update on map movements
+      const map = mapRef.current
+      map.on('moveend', updatePinPosition)
+      map.on('zoomend', updatePinPosition)
+      
+      return () => {
+        map.off('moveend', updatePinPosition)
+        map.off('zoomend', updatePinPosition)
+      }
+    }
+  }, [confirmedLocation, liveLocation, isAdjustMode])
+
+  // Convert lat/lng to pixel position for fixed pin when not in adjust mode
+  const getPinPixelPosition = () => {
+    if (!mapRef.current || !getActiveLocation() || isAdjustMode) return null
+    
+    try {
+      const map = mapRef.current
+      const activeLocation = getActiveLocation()
+      const point = map.latLngToContainerPoint(activeLocation)
+      return { x: point.x, y: point.y }
+    } catch (error) {
+      console.error('Error converting coordinates to pixel position:', error)
+      return null
+    }
+  }
+
+  // Handle map center change (respects adjust mode)
+  const handleMapCenterChange = (centerCoords) => {
+    setMapCenter(centerCoords)
+    
+    if (isAdjustMode) {
+      // Only update tempLocation when in adjust mode
+      setTempLocation(centerCoords)
+      
+      // Notify parent component if callback provided (only in adjust mode)
+      if (onLocationSelect) {
+        onLocationSelect({
+          lat: centerCoords[0],
+          lng: centerCoords[1],
+          name: 'Temporary Location'
+        })
+      }
+    }
+    // Don't update confirmedLocation - only confirm button should do that
+  }
+
+  // Get the active center coordinates for map centering
+  const getMapCenter = () => {
+    if (isAdjustMode && tempLocation && Array.isArray(tempLocation) && tempLocation.length === 2) {
+      return tempLocation
+    }
+    const activeLocation = getActiveLocation()
+    return activeLocation
+  }
+
+  // Handle confirm location action
+  const handleConfirmLocation = () => {
+    if (tempLocation && Array.isArray(tempLocation) && tempLocation.length === 2) {
+      setConfirmedLocation(tempLocation)
+      setTempLocation(null)
+      setIsAdjustMode(false) // Turn switch OFF automatically
+      
+      // Notify parent component with confirmed location
+      if (onLocationSelect) {
+        onLocationSelect({
+          lat: tempLocation[0],
+          lng: tempLocation[1],
+          name: 'Confirmed Location'
+        })
+      }
+    }
+  }
+
+  // Handle adjust mode toggle
+  const handleAdjustModeToggle = (enabled) => {
+    setIsAdjustMode(enabled)
+    if (!enabled) {
+      // Switch turned OFF, clear temporary location
+      setTempLocation(null)
+    } else {
+      // Switch turned ON, initialize tempLocation with current active location
+      const activeLocation = getActiveLocation()
+      if (activeLocation) {
+        setTempLocation(activeLocation)
+      }
+    }
+  }
+
   if (!isClient) {
     return (
       <div className="w-full h-full bg-gray-100 flex items-center justify-center">
@@ -386,39 +611,56 @@ const MapView = ({
       )}
       <MapContainer
         ref={mapRef}
-        center={userGeolocation ? [userGeolocation.lat, userGeolocation.lng] : userLocation}
+        center={getMapCenter()}
         zoom={13}
         style={{ height: '100%', width: '100%' }}
       >
         <MapController selectedArea={selectedArea} route={route} userGeolocation={userGeolocation} locationPermission={locationPermission} />
+        <FixedPinController 
+          tempLocation={tempLocation}
+          isAdjustMode={isAdjustMode}
+          onMapCenterChange={handleMapCenterChange} 
+        />
         
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
-        {/* User Location */}
-        <Marker position={userGeolocation ? [userGeolocation.lat, userGeolocation.lng] : userLocation} icon={createUserIcon()}>
-          <Popup>
-            <div className="text-sm">
-              <strong>Your Location</strong>
-              <br />
-              Current position
-            </div>
-          </Popup>
-        </Marker>
+        {/* User Location (Blue Dot) - Only show when NOT in adjust mode */}
+        {!isAdjustMode && (
+          <Marker 
+            position={getActiveLocation()}
+            icon={createUserIcon()}
+          >
+            <Popup>
+              <div className="text-xs sm:text-sm max-w-[200px] sm:max-w-xs p-1 sm:p-2">
+                <div className="font-semibold text-gray-900 mb-1 text-sm sm:text-base">
+                  {confirmedLocation ? 'Overridden Location' : 'Your Current Location'}
+                </div>
+                <div className="text-xs text-gray-500">
+                  Lat: {getActiveLocation()[0].toFixed(4)}, Lng: {getActiveLocation()[1].toFixed(4)}
+                  <br />
+                  {confirmedLocation ? 'Manually selected location' : 'Actual GPS position'}
+                </div>
+              </div>
+            </Popup>
+          </Marker>
+        )}
 
-        {/* Search radius circle */}
-        <Circle
-          center={userGeolocation ? [userGeolocation.lat, userGeolocation.lng] : userLocation}
-          radius={3000} // 3km radius
-          pathOptions={{
-            color: '#3b82f6',
-            fillColor: '#3b82f6',
-            fillOpacity: 0.1,
-            weight: 2,
-          }}
-        />
+        {/* Search radius circle - Only show when in adjust mode */}
+        {isAdjustMode && tempLocation && (
+          <Circle
+            center={tempLocation}
+            radius={3000} // 3km radius
+            pathOptions={{
+              color: '#ef4444', // Red for selected location
+              fillColor: '#ef4444',
+              fillOpacity: 0.1,
+              weight: 2,
+            }}
+          />
+        )}
 
         {/* Route Line */}
         {route && (
@@ -494,7 +736,7 @@ const MapView = ({
             <Popup>
               <div className="text-xs sm:text-sm max-w-[200px] sm:max-w-xs p-1 sm:p-2">
                 <div className="font-semibold text-gray-900 mb-1 text-sm sm:text-base">{area.name}</div>
-                <div className="text-xs text-gray-500 mb-2">{area.category} • {formatDistance(getDistanceFromUser(area))}</div>
+                <div className="text-xs text-gray-500 mb-2">{area.category} • {formatDistance(getDistanceFromActiveLocation(area))}</div>
 
                 <div className={`inline-block px-2 py-1 rounded-full text-xs font-medium mb-2 ${
                   area.status === 'available' ? 'bg-green-100 text-green-800' :
@@ -541,7 +783,7 @@ const MapView = ({
       </MapContainer>
 
       {/* Map Legend */}
-      <div className="absolute top-4 right-2 sm:right-4 bg-white rounded-lg shadow-lg p-2 sm:p-3 z-[1000] max-w-[160px] sm:max-w-none">
+      <div className="absolute top-20 right-2 sm:right-4 bg-white rounded-lg shadow-lg p-2 sm:p-3 z-[1000] max-w-[160px] sm:max-w-none">
         <h3 className="text-xs sm:text-sm font-semibold text-gray-900 mb-2">Legend</h3>
         <div className="space-y-1 sm:space-y-2">
           <div className="flex items-center gap-2">
@@ -558,14 +800,132 @@ const MapView = ({
           </div>
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 bg-blue-500 rounded-full border-2 border-white shadow-sm flex-shrink-0"></div>
-            <span className="text-xs text-gray-600">Your Location</span>
+            <span className="text-xs text-gray-600">
+              {confirmedLocation ? 'Current Location' : 'Live GPS Location'}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-b-[10px] transform rotate-45 border-red-500"></div>
+            <span className="text-xs text-gray-600">
+              Selected Location (Adjust Mode)
+            </span>
           </div>
         </div>
       </div>
 
+      {/* Red Pin Overlay - Only show when in adjust mode */}
+      {isAdjustMode && (
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-full pointer-events-none z-[1000]">
+          <div className="relative">
+            <div className="absolute -inset-2 rounded-full opacity-30 animate-ping bg-red-500"></div>
+            <div className="relative bg-red-500 w-8 h-8 rounded-full border-4 border-white shadow-lg flex items-center justify-center">
+              <div className="bg-white w-3 h-3 rounded-full"></div>
+            </div>
+            <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-t-[12px] border-t-red-500"></div>
+          </div>
+        </div>
+      )}
+
+      {/* Location Controls */}
+      <div className="absolute top-4 right-2 sm:right-4 bg-white rounded-lg shadow-lg p-3 sm:p-4 z-[1000] max-w-sm">
+        <div className="space-y-3">
+          {/* Adjust Location Switch */}
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-medium text-gray-900 flex items-center gap-2">
+              <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              Adjust Location
+            </label>
+            <Switch
+              checked={isAdjustMode}
+              onChange={handleAdjustModeToggle}
+              onColor="#f59e0b"
+              offColor="#d1d5db"
+              onHandleColor="#ffffff"
+              offHandleColor="#ffffff"
+              handleDiameter={20}
+              uncheckedIcon={false}
+              checkedIcon={false}
+              boxShadow="0px 1px 5px rgba(0, 0, 0, 0.6)"
+              activeBoxShadow="0px 0px 1px 10px rgba(0, 0, 0, 0.2)"
+              height={24}
+              width={48}
+              className="react-switch flex-shrink-0"
+              id="adjust-location-switch"
+            />
+          </div>
+
+          {/* Confirm Location Button */}
+          {isAdjustMode && tempLocation && (
+            <button
+              onClick={handleConfirmLocation}
+              className="w-full bg-blue-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors"
+            >
+              Confirm Location
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Active Location Display */}
+      {(liveLocation || confirmedLocation) && (
+        <div className="absolute bottom-4 left-2 sm:left-4 bg-white rounded-lg shadow-lg p-3 sm:p-4 max-w-sm z-[1000]">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="font-semibold text-gray-900 text-sm sm:text-base flex items-center gap-2">
+              <span className="text-blue-500">📍</span>
+              {isAdjustMode ? 'Temporary Location' : (confirmedLocation ? 'Overridden Location' : 'Live Location')}
+            </h3>
+            <button
+              onClick={() => {
+                // Reset to live GPS location
+                if (userGeolocation) {
+                  const userCoords = [userGeolocation.lat, userGeolocation.lng]
+                  setLiveLocation(userCoords)
+                  setConfirmedLocation(null)
+                  setTempLocation(null)
+                  setIsAdjustMode(false)
+                  if (mapRef.current) {
+                    mapRef.current.flyTo(userCoords, 15)
+                  }
+                } else {
+                  setLiveLocation(userLocation)
+                  setConfirmedLocation(null)
+                  setTempLocation(null)
+                  setIsAdjustMode(false)
+                  if (mapRef.current) {
+                    mapRef.current.flyTo(userLocation, 15)
+                  }
+                }
+              }}
+              className="text-gray-400 hover:text-gray-600 flex-shrink-0 p-1 min-h-[32px] min-w-[32px] flex items-center justify-center"
+              title="Reset to live location"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
+          </div>
+          <div className="text-xs sm:text-sm text-gray-600">
+            <p>
+              Lat: {(isAdjustMode && tempLocation ? tempLocation : getActiveLocation())[0].toFixed(4)}, 
+              Lng: {(isAdjustMode && tempLocation ? tempLocation : getActiveLocation())[1].toFixed(4)}
+            </p>
+            <p className="mt-1 text-xs text-gray-500">
+              {isAdjustMode 
+                ? "Move the map to adjust, then confirm" 
+                : confirmedLocation 
+                ? "Location overridden - toggle switch to adjust"
+                : "Live GPS location - toggle switch to adjust"}
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Selected Area Info */}
       {selectedArea && !selectedArea.isCurrentLocation && (
-        <div className="absolute bottom-[4.5rem] sm:bottom-4 left-2 sm:left-4 right-2 sm:right-auto bg-white rounded-lg shadow-lg p-3 sm:p-4 max-w-sm z-[1000]">
+        <div className="absolute bottom-[7.5rem] sm:bottom-[6.5rem] left-2 sm:left-4 right-2 sm:right-auto bg-white rounded-lg shadow-lg p-3 sm:p-4 max-w-sm z-[1000]">
           <div className="flex items-start justify-between mb-2">
             <h3 className="font-semibold text-gray-900 text-sm sm:text-base pr-2">{selectedArea.name}</h3>
             <button
@@ -578,7 +938,7 @@ const MapView = ({
             </button>
           </div>
           <div className="text-xs sm:text-sm text-gray-600">
-            <p>{selectedArea.category} • {getDistanceFromUser(selectedArea).toFixed(3)} km away</p>
+            <p>{selectedArea.category} • {getDistanceFromActiveLocation(selectedArea).toFixed(3)} km away</p>
             <p className="mt-1">{selectedArea.description}</p>
           </div>
           <button
@@ -629,14 +989,16 @@ const MapView = ({
       )}
 
       {/* No Parking Spots Notification - Small Line */}
-      {showNoParkingDialog && userGeolocation && (
+      {showNoParkingDialog && ((confirmedLocation || liveLocation) || userGeolocation) && (
         <div className="absolute top-16 bg-orange-50 border border-orange-200 rounded-lg p-2 z-[999]" style={{marginLeft: '3.5rem', marginRight: '7.5rem'}}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <svg className="w-4 h-4 text-orange-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
-              <span className="text-xs text-orange-800 font-medium">No parking spots found within 5KM of your location</span>
+              <span className="text-xs text-orange-800 font-medium">
+                No parking spots found within 5KM of {confirmedLocation ? 'overridden location' : 'your current location'}
+              </span>
             </div>
             <button
               onClick={() => {
