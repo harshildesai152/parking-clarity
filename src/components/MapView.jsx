@@ -8,6 +8,7 @@ import { useFavorites } from '../contexts/FavoritesContext'
 import { calculateStatus } from '../utils/statusUtils'
 import { calculateDistance, formatDistance } from '../utils/distanceUtils'
 import { useGeolocation } from '../hooks/useGeolocation'
+import { fetchRoute } from '../utils/routingUtils'
 
 // Fix for default marker icon in react-leaflet
 delete L.Icon.Default.prototype._getIconUrl
@@ -476,50 +477,7 @@ const MapView = ({
     }
   }, [])
 
-  // Generate route using OSRM routing service
-  const generateRoute = async (start, end) => {
-    try {
-      // OSRM routing API - free and open source
-      const coordinates = `${start[1]},${start[0]};${end[1]},${end[0]}`
-      const response = await fetch(
-        `https://router.project-osrm.org/route/v1/driving/${coordinates}?overview=full&geometries=geojson`
-      )
-      
-      if (!response.ok) {
-        throw new Error('Routing service unavailable')
-      }
-      
-      const data = await response.json()
-      
-      if (data.routes && data.routes.length > 0) {
-        const route = data.routes[0]
-        // Convert GeoJSON coordinates to Leaflet format
-        const routeCoords = route.geometry.coordinates.map(
-          coord => [coord[1], coord[0]] // Flip lat/lng for Leaflet
-        )
-        
-        // Update route info if callback provided
-        if (setRouteInfo) {
-          setRouteInfo({
-            distance: route.distance, // meters
-            duration: route.duration // seconds
-          })
-        }
-        
-        return routeCoords
-      }
-      
-      // Fallback to straight line if routing fails
-      if (setRouteInfo) setRouteInfo(null)
-      return [start, end]
-    } catch (error) {
-      console.error('Routing error:', error)
-      // Fallback to straight line
-      if (setRouteInfo) setRouteInfo(null)
-      return [start, end]
-    }
-  }
-
+  // Navigation click handler for markers
   const handleParkingClick = async (parkingArea) => {
     console.log('Parking clicked:', parkingArea.name);
     
@@ -538,8 +496,16 @@ const MapView = ({
         activeLocation = userLocation;
       }
       
-      const routePath = await generateRoute(activeLocation, parkingArea.coordinates)
-      setRoute(routePath)
+      const routeResult = await fetchRoute(activeLocation, parkingArea.coordinates)
+      if (routeResult) {
+        setRoute(routeResult.coordinates)
+        if (setRouteInfo) {
+          setRouteInfo({
+            distance: routeResult.distance,
+            duration: routeResult.duration
+          })
+        }
+      }
     } catch (error) {
       console.error('Failed to generate route:', error)
     } finally {

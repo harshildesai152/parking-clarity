@@ -49,7 +49,8 @@ const ParkingList = ({
   searchRadius = 'all', // New prop for radius filter
   refreshData, // Added refresh callback
   navigate, // Added navigate prop
-  activeLocation = null // New prop for active location from MapView
+  activeLocation = null, // New prop for active location from MapView
+  handleNavToArea // New prop for routing
 }) => {
   const { location: userGeolocation } = useGeolocation()
   // Normalize parking data to match UI expectations
@@ -167,11 +168,13 @@ const ParkingList = ({
   }
 
   const handleMapClick = (parkingArea) => {
-    // Set the selected area
-    setSelectedArea(parkingArea)
-    
-    // Navigate to map view
-    navigate('/')
+    if (handleNavToArea) {
+      handleNavToArea(parkingArea);
+    } else {
+      // Fallback if handleNavToArea is not provided
+      setSelectedArea(parkingArea)
+      navigate('/')
+    }
     
     // Switch to map tab in mobile view by updating URL hash or state
     setTimeout(() => {

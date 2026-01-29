@@ -12,6 +12,7 @@ import { FavoritesProvider } from './contexts/FavoritesContext'
 import { ReportsProvider } from './contexts/ReportsContext'
 import { AuthProvider } from './contexts/AuthContext'
 import ParkingRegisterForm from './components/ParkingRegisterForm'
+import { fetchRoute } from './utils/routingUtils'
 import './App.css'
 
 function App() {
@@ -149,6 +150,40 @@ function App() {
       setSearchLocation('Default Location');
     } else {
       setSearchLocation(location.name || 'Selected Location');
+    }
+  }
+
+  // Handle navigation to a specific parking area with routing
+  const handleNavToArea = async (area) => {
+    if (!area || !area.coordinates) return;
+
+    // 1. Switch to map view
+    setActiveTab('map');
+    
+    // 2. Select the area
+    setSelectedArea(area);
+
+    // 3. Determine start location
+    let startPoint;
+    if (confirmedLocation && Array.isArray(confirmedLocation) && confirmedLocation.length === 2) {
+      startPoint = confirmedLocation;
+    } else if (liveLocation) {
+      startPoint = liveLocation;
+    } else if (userLocation) {
+      startPoint = userLocation;
+    } else {
+      // Fallback if no location is available
+      return;
+    }
+
+    // 4. Fetch and set route
+    const routeResult = await fetchRoute(startPoint, area.coordinates);
+    if (routeResult) {
+      setRoute(routeResult.coordinates);
+      setRouteInfo({
+        distance: routeResult.distance,
+        duration: routeResult.duration
+      });
     }
   }
 
@@ -917,6 +952,7 @@ function App() {
                   refreshData={refreshData} // Added refresh callback
                   navigate={navigate} // Pass navigate function
                   activeLocation={activeLocation}
+                  handleNavToArea={handleNavToArea}
                 />
               </>
             ) : (
@@ -1021,6 +1057,7 @@ function App() {
                     refreshData={refreshData} // Added refresh callback
                     navigate={navigate} // Pass navigate function
                     activeLocation={activeLocation}
+                    handleNavToArea={handleNavToArea}
                   />
                 ) : listViewTab === 'favorites' ? (
                   <FavoritesList 
