@@ -110,7 +110,7 @@ export default async function handler(req, res) {
 
       let parkingQuery = Parking.find(query);
 
-      if (lat && lng) {
+      if (lat && lng && radius && radius !== 'all') {
         const userLat = parseFloat(lat);
         const userLng = parseFloat(lng);
         const searchRadius = parseFloat(radius);
@@ -138,7 +138,7 @@ export default async function handler(req, res) {
         }
       }
 
-      parkingQuery = parkingQuery.limit(parseInt(limit));
+      parkingQuery = parkingQuery.sort({ createdAt: -1 }).limit(parseInt(limit));
       const parkingSpots = await parkingQuery.exec();
 
       let result = parkingSpots.map(spot => {
