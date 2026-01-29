@@ -11,6 +11,7 @@ import LocationSearch from './components/LocationSearch'
 import { FavoritesProvider } from './contexts/FavoritesContext'
 import { ReportsProvider } from './contexts/ReportsContext'
 import { AuthProvider } from './contexts/AuthContext'
+import ParkingRegisterForm from './components/ParkingRegisterForm'
 import './App.css'
 
 function App() {
@@ -49,6 +50,7 @@ function App() {
   const [isAdjustMode, setIsAdjustMode] = useState(false) // Switch state for adjust mode
   const [locationSource, setLocationSource] = useState('current') // 'current' or 'search'
   const [zoomTrigger, setZoomTrigger] = useState(0) // Trigger zoom to current location
+  const [isRegisterFormOpen, setIsRegisterFormOpen] = useState(false)
 
   // Handle mobile menu close
   const handleMobileMenuClose = () => {
@@ -520,6 +522,24 @@ function App() {
                 )}
               </div>
 
+               {/* Register Parking Button - Mobile */}
+               <div className="px-4 pb-4">
+                <button
+                  onClick={() => {
+                    setIsRegisterFormOpen(true)
+                    setIsMobileMenuOpen(false)
+                  }}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-200 font-semibold text-sm shadow-lg hover:shadow-xl transform hover:scale-105"
+                >
+                  <div className="bg-white/20 p-1 rounded-md">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                  </div>
+                  Register New Parking
+                </button>
+              </div>
+
                <div className="px-4 pb-4">
               <button
                 onClick={() => {
@@ -644,6 +664,21 @@ function App() {
                 </button>
               </div>
             )}
+
+            {/* Register Parking Button */}
+            <div className="mb-6">
+              <button
+                onClick={() => setIsRegisterFormOpen(true)}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-200 font-semibold text-sm shadow-lg hover:shadow-xl transform hover:scale-105"
+              >
+                <div className="bg-white/20 p-1 rounded-md">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                </div>
+                Register New Parking
+              </button>
+            </div>
 
             {sidebarView === 'parking' && (
               <div className="flex bg-gray-100 rounded-lg p-1">
@@ -1007,6 +1042,13 @@ function App() {
         onClose={() => setIsLocationSearchOpen(false)}
         onLocationSelect={handleLocationSelect}
       />
+
+      {/* Parking Registration Form */}
+      <ParkingRegisterForm 
+        isOpen={isRegisterFormOpen}
+        onClose={() => setIsRegisterFormOpen(false)}
+        onSuccess={refreshData}
+      />
       </div>
     </FavoritesProvider>
     </ReportsProvider>
@@ -1022,6 +1064,7 @@ function App() {
       draggable
       pauseOnHover
       theme="light"
+      style={{ zIndex: 11000 }}
     />
     </>
   )
