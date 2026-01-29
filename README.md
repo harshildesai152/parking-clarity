@@ -40,10 +40,10 @@ A modern parking discovery and management platform. Find, register, and manage p
 
 ## 🌟 Core Features
 
-- **Smart Mapping**: Search by current location or specific areas (like "Mall") with adjustable 0.5km-10km radius.
-- **Real-time Navigation**: Instant route calculation with distance (KM) and ETA from your position.
-- **Community Driven**: Register new spots, report full parking via OTP, and manage favorites.
-- **Mobile First**: Optimized touch-friendly design with secure OTP authentication.
+- **Smart Area Search**: Planning a trip? Search for any landmark or area (like "VR Mall") using OpenStreetMap. The map will pin your destination, allowing you to discover all available parking spots within your selected **Search Radius**.
+- **Real-time Navigation**: Instant route calculation with distance (KM) and ETA from your current or searched position.
+- **Community Driven**: Register new spots, report status updates via secure OTP, and manage your favorite locations.
+- **Mobile-First Design**: A premium, touch-optimized interface featuring secure authentication and high-performance mapping.
 
 ---
 
