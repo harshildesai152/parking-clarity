@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react'
+import { useAuth } from './AuthContext'
 
 const ReportsContext = createContext()
 
@@ -14,6 +15,8 @@ export const ReportsProvider = ({ children }) => {
   const [reports, setReports] = useState([])
 
   // API to set data show
+  const { token } = useAuth()
+
   useEffect(() => {
     const fetchReports = async () => {
       try {
@@ -27,7 +30,7 @@ export const ReportsProvider = ({ children }) => {
       }
     }
     fetchReports()
-  }, [])
+  }, [token])
 
   const addReport = (report) => {
     const newReport = {

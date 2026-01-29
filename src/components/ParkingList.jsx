@@ -10,7 +10,25 @@ import LoginModal from './LoginModal'
 
 
 
-  const ParkingList = ({ 
+// Helper function to format time ago
+const getTimeAgo = (lastUpdated) => {
+  if (!lastUpdated) return 'Unknown';
+  const diffInMins = Math.floor((Date.now() - new Date(lastUpdated)) / 60000);
+  
+  if (diffInMins < 60) {
+    return `${diffInMins} min ago`;
+  }
+  
+  const diffInHours = Math.floor(diffInMins / 60);
+  if (diffInHours < 24) {
+    return `${diffInHours} hour${diffInHours > 1 ? 's' : ''} ago`;
+  }
+  
+  const diffInDays = Math.floor(diffInHours / 24);
+  return `${diffInDays} day${diffInDays > 1 ? 's' : ''} ago`;
+};
+
+const ParkingList = ({ 
   parkingData = [],
   isLoading = false,
   selectedArea, 
@@ -437,7 +455,7 @@ import LoginModal from './LoginModal'
                     🚨 {area.reports.count} users reported parking is full
                   </span>
                   <span className="text-xs text-red-500">
-                    {Math.floor((Date.now() - new Date(area.reports.lastUpdated)) / 60000)}m ago
+                    {getTimeAgo(area.reports.lastUpdated)}
                   </span>
                 </div>
               </div>
