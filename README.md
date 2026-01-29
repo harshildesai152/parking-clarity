@@ -125,5 +125,14 @@ A modern parking discovery and management platform. Find, register, and manage p
 <p align="center">
   <img src="./screenshots/Screenshot 2026-01-29 234455.png" width="400" />
   <img src="./screenshots/Screenshot 2026-01-29 234444.png" width="400" />
-  <img src="./screenshots/Screenshot 2026-01-29 234555.png" width="300" />
+</p>
+
+<p align="center">
+  <img src="./screenshots/Screenshot 2026-01-29 234555.png" width="400" />
+  <img src="./screenshots/Screenshot 2026-01-30 002850.png" width="400" /> 
+</p>
+
+<p align="center">
+ <img src="./screenshots/Screenshot 2026-01-30 003006.png" width="400">
+ <img src="./screenshots/Screenshot 2026-01-30 003119.png" width="400">
 </p>
