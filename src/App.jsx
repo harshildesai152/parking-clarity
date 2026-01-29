@@ -39,6 +39,7 @@ function App() {
   const [searchedLocation, setSearchedLocation] = useState(null)
   const [mapSearchText, setMapSearchText] = useState('') // Text to show in map search bar
   const [route, setRoute] = useState(null) // Add route state to manage routes
+  const [routeInfo, setRouteInfo] = useState(null) // State for route distance and duration
   const [activeLocation, setActiveLocation] = useState(null) // Active location from MapView (confirmed or live)
   
   // Location adjustment state - moved from MapView to persist across view changes
@@ -46,25 +47,96 @@ function App() {
   const [tempLocation, setTempLocation] = useState(null) // Temporary location during adjust mode
   const [confirmedLocation, setConfirmedLocation] = useState(null) // Final overridden location
   const [isAdjustMode, setIsAdjustMode] = useState(false) // Switch state for adjust mode
+  const [locationSource, setLocationSource] = useState('current') // 'current' or 'search'
+  const [zoomTrigger, setZoomTrigger] = useState(0) // Trigger zoom to current location
 
   // Handle mobile menu close
   const handleMobileMenuClose = () => {
     setIsMobileMenuOpen(false)
   }
 
+  // Handle location source change from dropdown
+  const handleLocationSourceChange = (source) => {
+    setLocationSource(source)
+    if (source === 'current') {
+      setZoomTrigger(prev => prev + 1)
+    }
+  }
+
   // Handle location selection from MapView (new system)
   const handleMapLocationSelect = (location) => {
     console.log('Map location selected:', location);
-    // Update activeLocation state for distance calculations
-    setActiveLocation([location.lat, location.lng]);
     
-    // Only update userLocation for confirmed locations (not temporary adjustments)
-    if (location.name === 'Confirmed Location' || location.name === 'Live Location' || location.name === 'Default Location') {
-      setUserLocation([location.lat, location.lng]);
-    }
-    
-    if (location.name === 'Confirmed Location') {
-      setSearchLocation('Overridden Location');
+    if (location.type === 'navigation') {
+      // Handle navigation from LocationSearch (FROM/TO)
+      if (location.from && location.to) {
+        // Validate coordinates before using them
+        const fromLat = location.from.lat;
+        const fromLng = location.from.lng;
+        const toLat = location.to.lat;
+        const toLng = location.to.lng;
+        
+        if (typeof fromLat === 'number' && typeof fromLng === 'number' && !isNaN(fromLat) && !isNaN(fromLng) &&
+            typeof toLat === 'number' && typeof toLng === 'number' && !isNaN(toLat) && !isNaN(toLng)) {
+          
+          // Set FROM as confirmed location for route calculation
+          setConfirmedLocation([fromLat, fromLng]);
+          setLiveLocation([fromLat, fromLng]);
+          
+          // Set TO as selected area
+          const selectedParkingArea = {
+            id: location.to.id,
+            name: location.to.name,
+            coordinates: [toLat, toLng],
+            category: location.to.type,
+            // Add other required fields for parking area
+          };
+          setSelectedArea(selectedParkingArea);
+        } else {
+          console.warn('Invalid navigation coordinates:', location);
+          return; // Don't proceed with invalid coordinates
+        }
+        
+        // Switch to map view to show the route
+        setActiveTab('map');
+        
+        // Generate route from FROM to TO using OSRM routing service
+        const fetchRoute = async () => {
+          try {
+            // OSRM API - Free OpenStreetMap routing service
+            const routeUrl = `https://router.project-osrm.org/route/v1/driving/${fromLng},${fromLat};${toLng},${toLat}?overview=full&geometries=geojson&steps=true`;
+            
+            const response = await fetch(routeUrl);
+            if (!response.ok) {
+              throw new Error('Route calculation failed');
+            }
+            
+            const data = await response.json();
+            
+            if (data.routes && data.routes.length > 0) {
+              const route = data.routes[0];
+              const coordinates = route.geometry.coordinates.map(coord => [coord[1], coord[0]]); // Convert [lng, lat] to [lat, lng]
+              
+              // Set the route for display on map
+              setRoute(coordinates);
+              
+              console.log('Route calculated successfully:', {
+                distance: route.distance,
+                duration: route.duration,
+                coordinates: coordinates.length
+              });
+            } else {
+              throw new Error('No route found');
+            }
+          } catch (error) {
+            console.error('Error fetching route:', error);
+            // Fallback to straight line if routing fails
+            setRoute([[fromLat, fromLng], [toLat, toLng]]);
+          }
+        };
+        
+        fetchRoute();
+      }
     } else if (location.name === 'Temporary Location') {
       setSearchLocation('Adjusting Location');
     } else if (location.name === 'Live Location') {
@@ -78,16 +150,17 @@ function App() {
 
   // Handle location selection from search
   const handleLocationSelect = (location) => {
+    // Always clear previous route and selection on new search
+    setSelectedArea(null)
+    setRoute(null)
+    setRouteInfo(null)
     setSearchedLocation(location)
-    setActiveTab('map') // Switch to map view
+    
+    setActiveTab('map')
     setUserLocation([location.lat, location.lng])
-    setMapSearchText(location.name) // Set map search bar text
+    setMapSearchText(location.name)
     
-    // Clear previous selection and route
-    setSelectedArea(null) // Clear previous selection first
-    setRoute(null) // Clear previous route
-    
-    // Set selected area to center map on location
+    // Set search result as a temporary marker
     setTimeout(() => {
       setSelectedArea({
         id: `search-${location.id}`,
@@ -96,7 +169,7 @@ function App() {
         category: location.type || 'location',
         isSearchResult: true
       })
-    }, 100) // Small delay to ensure clear then set
+    }, 100)
   }
 
   // Clear all filters function
@@ -214,54 +287,54 @@ function App() {
           </button>
         </div>
 
-        {/* Location Search & Radius */}
+        {/* Location Source Dropdown & Radius */}
         <div className="space-y-3 mb-3">
-          <div className="flex gap-2">
-            <button
-              onClick={() => setIsLocationSearchOpen(true)}
-              className="flex-1 relative bg-gray-50 border border-gray-300 rounded-lg px-4 py-3 text-left text-gray-500 hover:bg-gray-100 transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-                <span className="text-sm">
-                  {mapSearchText || 'Search for parking, places...'}
-                </span>
-              </div>
-            </button>
-            {/* <button
-              onClick={() => {
-                if (navigator.geolocation) {
-                  navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                      setUserLocation([position.coords.latitude, position.coords.longitude])
-                      setSearchLocation('Current Location')
-                    },
-                    (error) => console.error('Location error:', error)
-                  )
-                }
-              }}
-              className="px-3 py-2 bg-blue-500 text-white text-sm rounded-lg hover:bg-blue-600 transition-colors"
-            >
-              📍
-            </button> */}
+          <div className="flex items-center justify-between gap-2 bg-gray-50 p-3 rounded-lg border border-gray-200">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold text-gray-700">Find packing spots From:</span>
+              <select
+                value={locationSource}
+                onChange={(e) => handleLocationSourceChange(e.target.value)}
+                className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2 transition-all"
+              >
+                <option value="current">Current location</option>
+                <option value="search">Search location</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-2 border-l pl-3 border-gray-300">
+              <span className="text-sm font-semibold text-gray-700">Radius:</span>
+              <select
+                value={searchRadius}
+                onChange={(e) => setSearchRadius(e.target.value)}
+                className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2 transition-all"
+              >
+                <option value="all">ALL</option>
+                <option value="1000">1 KM</option>
+                <option value="2000">2 KM</option>
+                <option value="5000">5 KM</option>
+                <option value="10000">10 KM</option>
+              </select>
+            </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-600">Radius:</span>
-            <select
-              value={searchRadius}
-              onChange={(e) => setSearchRadius(e.target.value)}
-              className="px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="all">ALL</option>
-              <option value="1000">Up to 1 KM</option>
-              <option value="2000">Up to 2 KM</option>
-              <option value="5000">Up to 5 KM</option>
-              <option value="10000">Up to 10 KM</option>
-            </select>
-          </div>
+          {/* Conditional Search Bar */}
+          {locationSource === 'search' && (
+            <div className="flex gap-2 animate-in fade-in slide-in-from-top-2 duration-300">
+              <button
+                onClick={() => setIsLocationSearchOpen(true)}
+                className="flex-1 relative bg-white border-2 border-blue-500 rounded-xl px-4 py-3 text-left text-gray-700 shadow-md transform active:scale-[0.98] transition-all"
+              >
+                <div className="flex items-center gap-3">
+                  <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                  <span className="text-sm font-medium">
+                    {mapSearchText || 'Search for parking, places...'}
+                  </span>
+                </div>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Mobile Tab Navigation */}
@@ -598,35 +671,54 @@ function App() {
             {sidebarView === 'parking' ? (
               <>
                 {/* Location Search & Radius */}
-                <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-                  <div className="space-y-3">
-                    {/* <button
-                      onClick={() => setIsLocationSearchOpen(true)}
-                      className="w-full relative bg-white border border-gray-300 rounded-lg px-4 py-3 text-left text-gray-500 hover:bg-gray-50 transition-colors"
-                    >
-                      <div className="flex items-center gap-3">
-                        <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
-                        <span className="text-sm">
-                          {mapSearchText || 'Search for parking, places...'}
-                        </span>
-                      </div>
-                    </button> */}
+                <div className="mb-6 p-4 bg-white rounded-xl shadow-sm border border-gray-100">
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Search From</label>
+                      <select
+                        value={locationSource}
+                        onChange={(e) => handleLocationSourceChange(e.target.value)}
+                        className="w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 transition-all font-medium"
+                      >
+                        <option value="current">📍 Current location</option>
+                        <option value="search">🔍 Search location</option>
+                      </select>
+                    </div>
 
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-gray-600">Radius:</span>
+                    {locationSource === 'search' && (
+                      <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                        <button
+                          onClick={() => setIsLocationSearchOpen(true)}
+                          className="w-full relative bg-white border-2 border-blue-500 rounded-xl px-4 py-3 text-left text-gray-700 shadow-sm hover:shadow-md transition-all active:scale-[0.98]"
+                        >
+                          <div className="flex items-center gap-3">
+                            <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                            <span className="text-sm font-semibold">
+                              {mapSearchText || 'Search location...'}
+                            </span>
+                          </div>
+                        </button>
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between p-2.5 bg-gray-50 rounded-lg border border-gray-200">
+                      <span className="text-sm font-semibold text-gray-600">Search Radius:</span>
                       <select
                         value={searchRadius}
                         onChange={(e) => setSearchRadius(e.target.value)}
-                        className="px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="bg-transparent border-none text-blue-600 text-sm font-bold focus:ring-0 p-0 cursor-pointer"
                       >
                         <option value="all">ALL</option>
-                        <option value="1000">Up to 1 KM</option>
-                        <option value="2000">Up to 2 KM</option>
-                        <option value="5000">Up to 5 KM</option>
-                        <option value="10000">Up to 10 KM</option>
+                        <option value="1000">1 KM</option>
+                        <option value="2000">2 KM</option>
+                        <option value="5000">5 KM</option>
+                        <option value="10000">10 KM</option>
                       </select>
+                    </div>
+
+                    {locationSource === 'current' && (
                       <button
                         onClick={() => {
                           if (navigator.geolocation) {
@@ -635,34 +727,25 @@ function App() {
                                 const userCoords = [position.coords.latitude, position.coords.longitude]
                                 setUserLocation(userCoords)
                                 setSearchLocation('Current Location')
-                                
-                                // Switch to map view and close mobile menu if open
                                 setActiveTab('map')
-                                setIsMobileMenuOpen(false)
-                                
-                                // Set user location as selected area to trigger map zoom
                                 setSelectedArea({
                                   id: 'current-location',
                                   name: 'Your Current Location',
                                   coordinates: userCoords,
                                   category: 'Location',
-                                  isCurrentLocation: true // Flag to identify current location
+                                  isCurrentLocation: true
                                 })
-                                
-                                // Clear selected area after a short delay to hide popup
-                                setTimeout(() => {
-                                  setSelectedArea(null)
-                                }, 2000) // Clear after 2 seconds
+                                setTimeout(() => setSelectedArea(null), 2000)
                               },
                               (error) => console.error('Location error:', error)
                             )
                           }
                         }}
-                        className="px-3 py-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white text-sm rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105"
+                        className="w-full py-2.5 bg-blue-50 text-blue-600 rounded-lg border border-blue-200 text-xs font-bold hover:bg-blue-100 transition-all flex items-center justify-center gap-2"
                       >
-                        📍 Current Location
+                        <span>�</span> Refresh Current location
                       </button>
-                    </div>
+                    )}
                   </div>
                 </div>
 
@@ -816,6 +899,8 @@ function App() {
               filterByAvailability={filterByAvailability}
               route={route}
               setRoute={setRoute}
+              routeInfo={routeInfo}
+              setRouteInfo={setRouteInfo}
               mapSearchText={mapSearchText}
               searchRadius={searchRadius}
               onLocationSelect={handleMapLocationSelect}
@@ -827,6 +912,8 @@ function App() {
               setConfirmedLocation={setConfirmedLocation}
               isAdjustMode={isAdjustMode}
               setIsAdjustMode={setIsAdjustMode}
+              searchedLocation={searchedLocation}
+              zoomTrigger={zoomTrigger}
             />
           ) : (
             <div className="w-full h-full bg-gray-50 p-4 sm:p-6 lg:p-8 overflow-y-auto">

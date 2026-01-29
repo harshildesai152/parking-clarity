@@ -3,11 +3,12 @@ import { useNavigate } from 'react-router-dom'
 import { getUserId, getUserStorageKey } from '../utils/userUtils'
 
 const LocationSearch = ({ isOpen, onClose, onLocationSelect }) => {
-  const [searchQuery, setSearchQuery] = useState('')
-  const [searchResults, setSearchResults] = useState([])
-  const [isSearching, setIsSearching] = useState(false)
+  const [fromQuery, setFromQuery] = useState('')
+  const [fromResults, setFromResults] = useState([])
+  const [isSearchingFrom, setIsSearchingFrom] = useState(false)
   const [searchHistory, setSearchHistory] = useState([])
   const [activeFilter, setActiveFilter] = useState('All')
+  const [selectedFrom, setSelectedFrom] = useState(null)
 
   const getStorageKey = () => getUserStorageKey('parking_search_history')
 
@@ -15,11 +16,43 @@ const LocationSearch = ({ isOpen, onClose, onLocationSelect }) => {
   useEffect(() => {
     if (isOpen) {
       loadSearchHistory()
-      setSearchQuery('')
-      setSearchResults([])
-      setIsSearching(false)
+      setFromQuery('')
+      setFromResults([])
+      setIsSearchingFrom(false)
+      // Set current location as default FROM
+      getCurrentLocationAsFrom()
     }
   }, [isOpen])
+
+  // Get current location as default FROM
+  const getCurrentLocationAsFrom = () => {
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords
+          setSelectedFrom({
+            name: 'My Current Location',
+            lat: latitude,
+            lng: longitude,
+            hasLocation: true,
+            type: 'current'
+          })
+          // setFromQuery('My Current Location') // Keep query empty so it feels reset
+        },
+        (error) => {
+          console.error('Error getting current location:', error)
+          setSelectedFrom({
+            name: 'Current Location (Unknown)',
+            lat: 21.1951,
+            lng: 72.8302,
+            hasLocation: true,
+            type: 'current'
+          })
+          // setFromQuery('Current Location (Unknown)') // Keep query empty
+        }
+      )
+    }
+  }
 
   // Load search history from localStorage
   const loadSearchHistory = () => {
@@ -87,16 +120,121 @@ const LocationSearch = ({ isOpen, onClose, onLocationSelect }) => {
   ]
 
 
-  // Search parking locations via API
-  const searchParking = async (query) => {
+  // Search FROM locations using multiple APIs with fallback
+  const searchFromLocations = async (query) => {
     if (!query.trim()) {
-      setSearchResults([])
+      setFromResults([])
       return
     }
 
-    setIsSearching(true)
+    setIsSearchingFrom(true)
+    
+    // Try different APIs in order of preference
+    const apis = [
+      {
+        name: 'Photon',
+        url: `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=5`,
+        transform: (data) => data.features?.map(item => ({
+          id: `photon_${item.properties?.osm_id || Math.random()}`,
+          name: item.properties?.name || item.properties?.city || item.properties?.country || 'Location',
+          type: item.properties?.osm_type || 'location',
+          location: `${item.properties?.name || ''}, ${item.properties?.city || ''}, ${item.properties?.country || ''}`.replace(/^, |, $/g, ''),
+          lat: item.geometry?.coordinates?.[1],
+          lng: item.geometry?.coordinates?.[0],
+          hasLocation: !!(item.geometry?.coordinates?.[1] && item.geometry?.coordinates?.[0])
+        })) || []
+      },
+      {
+        name: 'MapTiler',
+        url: `https://api.maptiler.com/geocoding/${encodeURIComponent(query)}.json?key=YOUR_MAPTILER_KEY`,
+        transform: (data) => data.features?.map(item => ({
+          id: `maptiler_${item.id}`,
+          name: item.place_name?.split(',')[0] || item.text,
+          type: item.place_type?.[0] || 'location',
+          location: item.place_name || item.text,
+          lat: item.center?.[1],
+          lng: item.center?.[0],
+          hasLocation: !!(item.center?.[1] && item.center?.[0])
+        })) || []
+      },
+      {
+        name: 'OpenCage',
+        url: `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(query)}&key=YOUR_OPENCAGE_KEY&limit=5`,
+        transform: (data) => data.results?.map(item => ({
+          id: `opencage_${item.confidence}_${item.timestamp}`,
+          name: item.components?.road || item.formatted?.split(',')[0] || 'Location',
+          type: item.components?.category || 'location',
+          location: item.formatted,
+          lat: item.geometry?.lat,
+          lng: item.geometry?.lng,
+          hasLocation: !!(item.geometry?.lat && item.geometry?.lng)
+        })) || []
+      }
+    ]
+
+    // Try each API until one works
+    for (const api of apis) {
+      try {
+        console.log(`Trying ${api.name} API...`)
+        
+        // Skip APIs that need keys for now, use fallback directly
+        if (api.url.includes('YOUR_')) {
+          throw new Error('API key required')
+        }
+        
+        const response = await fetch(api.url)
+        
+        if (!response.ok) {
+          throw new Error(`${api.name} API failed: ${response.status}`)
+        }
+        
+        const data = await response.json()
+        const transformedResults = api.transform(data)
+        
+        if (transformedResults.length > 0) {
+          setFromResults(transformedResults)
+          return
+        }
+      } catch (error) {
+        console.log(`${api.name} API failed:`, error.message)
+        continue
+      }
+    }
+
+    // If all APIs fail, use fallback data
+    console.log('All APIs failed, using fallback data')
+    const fallbackResults = getFallbackLocationResults(query)
+    setFromResults(fallbackResults)
+    
+    setIsSearchingFrom(false)
+  }
+
+  // Fallback location results for common searches
+  const getFallbackLocationResults = (query) => {
+    const commonLocations = [
+      { id: 'fallback_1', name: 'Current Location', lat: 21.1951, lng: 72.8302, hasLocation: true, location: 'Surat, Gujarat, India' },
+      { id: 'fallback_2', name: 'Surat City Center', lat: 21.1702, lng: 72.8311, hasLocation: true, location: 'Surat, Gujarat, India' },
+      { id: 'fallback_3', name: 'Varachha', lat: 21.2104, lng: 72.8907, hasLocation: true, location: 'Varachha, Surat, Gujarat, India' },
+      { id: 'fallback_4', name: 'Adajan', lat: 21.2016, lng: 72.7895, hasLocation: true, location: 'Adajan, Surat, Gujarat, India' },
+      { id: 'fallback_5', name: 'Piplod', lat: 21.1859, lng: 72.8395, hasLocation: true, location: 'Piplod, Surat, Gujarat, India' }
+    ]
+    
+    return commonLocations.filter(loc => 
+      loc.name.toLowerCase().includes(query.toLowerCase()) ||
+      loc.location.toLowerCase().includes(query.toLowerCase())
+    )
+  }
+
+  // Search TO locations using your parking API
+  const searchToLocations = async (query) => {
+    if (!query.trim()) {
+      setToResults([])
+      return
+    }
+
+    setIsSearchingTo(true)
     try {
-      // Use your actual parking API
+      // Use your parking API
       const response = await fetch(`/api/parking?search=${encodeURIComponent(query)}`)
       
       if (!response.ok) {
@@ -107,7 +245,7 @@ const LocationSearch = ({ isOpen, onClose, onLocationSelect }) => {
       
       // Transform API data to match our format
       const transformedResults = (data.data || []).map(item => ({
-        id: item._id || item.id,
+        id: `to_${item._id || item.id}`,
         name: item.name,
         type: item.category || 'parking',
         location: `${item.area || ''}, ${item.city || ''}`.replace(/, ,/g, ',').replace(/^, |, $/g, ''),
@@ -116,33 +254,49 @@ const LocationSearch = ({ isOpen, onClose, onLocationSelect }) => {
         hasLocation: !!(item.location?.lat && item.location?.lng) || !!(item.coordinates?.[0] && item.coordinates?.[1])
       }))
       
-      setSearchResults(transformedResults)
+      setToResults(transformedResults)
     } catch (error) {
-      console.error('Search error:', error)
+      console.error('TO search error:', error)
       
       // Fallback to mock data if API fails
       const filteredResults = mockParkingData.filter(item =>
         item.name.toLowerCase().includes(query.toLowerCase()) ||
         item.location.toLowerCase().includes(query.toLowerCase())
       )
-      setSearchResults(filteredResults)
+      setToResults(filteredResults)
     } finally {
-      setIsSearching(false)
+      setIsSearchingTo(false)
     }
   }
 
-  // Debounced search
+  // Debounced search for FROM with rate limiting
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      if (searchQuery) {
-        searchParking(searchQuery)
+      if (fromQuery && fromQuery !== 'My Current Location' && fromQuery !== 'Current Location (Unknown)') {
+        // Only search if query is at least 2 characters long to reduce API calls
+        if (fromQuery.trim().length >= 2) {
+          searchFromLocations(fromQuery)
+        } else {
+          setFromResults([])
+        }
       } else {
-        setSearchResults([])
+        setFromResults([])
       }
-    }, 300)
+    }, 800) // Increased debounce time to 800ms to reduce API calls
 
     return () => clearTimeout(timeoutId)
-  }, [searchQuery])
+  }, [fromQuery])
+
+  // Handle navigation selection
+  const handleNavigate = () => {
+    if (selectedFrom) {
+      // Pass the selected location to parent
+      onLocationSelect(selectedFrom)
+      onClose()
+    } else {
+      alert('Please select a location')
+    }
+  }
 
   // Handle location selection
   const handleLocationSelect = (location) => {
@@ -190,21 +344,28 @@ const LocationSearch = ({ isOpen, onClose, onLocationSelect }) => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
           </button>
-          <div className="flex-1 relative">
+          <h2 className="text-lg font-semibold text-gray-900">Navigate to Parking</h2>
+        </div>
+
+        {/* FROM and TO Inputs */}
+        <div className="space-y-3">
+          {/* FROM Input */}
+          <div className="relative">
+            <div className="absolute left-3 top-3.5 w-5 h-5 text-green-500">
+              <svg fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+              </svg>
+            </div>
             <input
               type="text"
-              placeholder="Search for parking, places, addresses..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full px-4 py-3 pl-10 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              autoFocus
+              placeholder="From: Current location or search..."
+              value={fromQuery}
+              onChange={(e) => setFromQuery(e.target.value)}
+              className="w-full px-4 py-3 pl-10 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
             />
-            <svg className="absolute left-3 top-3.5 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            {searchQuery && (
+            {fromQuery && (
               <button
-                onClick={() => setSearchQuery('')}
+                onClick={() => setFromQuery('')}
                 className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors flex items-center justify-center"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -213,30 +374,50 @@ const LocationSearch = ({ isOpen, onClose, onLocationSelect }) => {
               </button>
             )}
           </div>
-        </div>
 
-        {/* Filter Pills */}
-        
+          {/* Navigate / Select Button */}
+          <button
+            onClick={handleNavigate}
+            disabled={!selectedFrom}
+            className={`w-full py-3 px-4 rounded-lg font-medium transition-colors ${
+              selectedFrom
+                ? 'bg-blue-500 text-white hover:bg-blue-600'
+                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+            }`}
+          >
+            Select Location
+          </button>
+        </div>
       </div>
 
       {/* Search Results */}
       <div className="flex-1 bg-white overflow-y-auto">
-        {isSearching ? (
+        {/* FROM Results */}
+        {isSearchingFrom && (
           <div className="flex items-center justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mr-3"></div>
-            <span className="text-gray-600">Searching...</span>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mr-3"></div>
+            <span className="text-gray-600">Searching FROM locations...</span>
           </div>
-        ) : searchQuery && searchResults.length > 0 ? (
+        )}
+        {fromQuery && fromResults.length > 0 && (
           <div className="p-4">
-            <h3 className="text-sm font-semibold text-gray-500 mb-3">SEARCH RESULTS</h3>
+            <h3 className="text-sm font-semibold text-gray-500 mb-3">FROM LOCATIONS</h3>
             <div className="space-y-3">
-              {searchResults.map((result) => (
+              {fromResults.map((result) => (
                 <button
                   key={result.id}
-                  onClick={() => handleLocationSelect(result)}
+                  onClick={() => {
+                    setSelectedFrom(result)
+                    setFromQuery(result.name)
+                    setFromResults([])
+                  }}
                   className="w-full flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left"
                 >
-                  {getResultIcon(result)}
+                  <div className="w-5 h-5 text-green-500">
+                    <svg fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                    </svg>
+                  </div>
                   <div className="flex-1">
                     <h4 className="font-medium text-gray-900">{result.name}</h4>
                     <p className="text-sm text-gray-500">{result.location}</p>
@@ -250,51 +431,26 @@ const LocationSearch = ({ isOpen, onClose, onLocationSelect }) => {
               ))}
             </div>
           </div>
-        ) : searchQuery && !isSearching ? (
-          <div className="flex flex-col items-center justify-center py-16 px-4">
-            <svg className="w-16 h-16 text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No results found</h3>
-            <p className="text-gray-500 text-center">Try searching with different keywords or check your spelling</p>
-          </div>
-        ) : searchHistory.length > 0 ? (
-          <div className="p-4">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-gray-500">RECENT SEARCHES</h3>
-              <button
-                onClick={clearSearchHistory}
-                className="text-sm text-blue-500 hover:text-blue-600"
-              >
-                Clear all
-              </button>
-            </div>
-            <div className="space-y-3">
-              {searchHistory.map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => handleLocationSelect(item)}
-                  className="w-full flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors text-left"
-                >
-                  {getResultIcon(item)}
-                  <div className="flex-1">
-                    <h4 className="font-medium text-gray-900">{item.name}</h4>
-                    <p className="text-sm text-gray-500">{item.location}</p>
-                  </div>
-                  <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+        )}
+
+            {/* Removed TO Results section */}
+
+        {/* Selected Locations Summary */}
+        {selectedFrom && (
+          <div className="p-4 border-t border-gray-200">
+            <h3 className="text-sm font-semibold text-gray-500 mb-3">SELECTED LOCATION</h3>
+            <div className="space-y-2">
+              <div className="flex items-center gap-3 p-2 bg-green-50 rounded-lg">
+                <div className="w-4 h-4 text-green-500">
+                  <svg fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
                   </svg>
-                </button>
-              ))}
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-medium text-gray-900 text-sm">{selectedFrom.name}</h4>
+                </div>
+              </div>
             </div>
-          </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center py-16 px-4">
-            <svg className="w-16 h-16 text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Search for parking locations</h3>
-            <p className="text-gray-500 text-center">Find parking spots, malls, cinemas, and more</p>
           </div>
         )}
       </div>

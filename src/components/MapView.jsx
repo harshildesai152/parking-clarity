@@ -18,24 +18,46 @@ L.Icon.Default.mergeOptions({
 })
 
 // MapController component to handle map interactions
-const MapController = ({ selectedArea, route, userGeolocation, locationPermission }) => {
+const MapController = ({ selectedArea, route, userGeolocation, locationPermission, zoomTrigger }) => {
   const map = useMap()
   const [hasZoomedToLocation, setHasZoomedToLocation] = useState(false)
 
   useEffect(() => {
-    if (selectedArea && !route) {
-      // Precision zoom to selected parking location
-      map.flyTo(selectedArea.coordinates, 17, {
-        duration: 1.5,
-        easeLinearity: 0.5
-      })
+    if (selectedArea && !route && selectedArea.coordinates) {
+      // Validate coordinates before using
+      const [lat, lng] = selectedArea.coordinates
+      if (typeof lat === 'number' && typeof lng === 'number' && !isNaN(lat) && !isNaN(lng)) {
+        // Precision zoom to selected parking location
+        map.flyTo(selectedArea.coordinates, 17, {
+          duration: 1.5,
+          easeLinearity: 0.5
+        })
+      } else {
+        console.warn('Invalid coordinates for selectedArea:', selectedArea.coordinates)
+      }
     } else if (route && route.length > 0) {
+      // Validate route coordinates
+      const validRoute = route.filter(point => 
+        point && 
+        Array.isArray(point) && 
+        point.length === 2 && 
+        typeof point[0] === 'number' && 
+        typeof point[1] === 'number' && 
+        !isNaN(point[0]) && 
+        !isNaN(point[1])
+      )
+      
+      if (validRoute.length < 2) {
+        console.warn('Invalid route coordinates:', route)
+        return
+      }
+      
       // Show route with better zoom level - center on route but don't zoom out too much
-      const bounds = L.latLngBounds(route)
+      const bounds = L.latLngBounds(validRoute)
 
       // Calculate distance between start and end points
-      const startPoint = route[0]
-      const endPoint = route[route.length - 1]
+      const startPoint = validRoute[0]
+      const endPoint = validRoute[validRoute.length - 1]
       const distance = map.distance(startPoint, endPoint)
 
       // Adjust zoom based on route distance
@@ -58,16 +80,20 @@ const MapController = ({ selectedArea, route, userGeolocation, locationPermissio
     }
   }, [selectedArea, route, map])
 
-  // Zoom to live location when it's first fetched
+
+  // Zoom to live location when zoomTrigger changes (triggered from dropdown)
   useEffect(() => {
-    if (userGeolocation && locationPermission === 'granted' && !hasZoomedToLocation) {
-      map.flyTo([userGeolocation.lat, userGeolocation.lng], 15, {
-        duration: 1.5,
-        easeLinearity: 0.5
-      })
-      setHasZoomedToLocation(true)
+    if (userGeolocation && locationPermission === 'granted' && zoomTrigger > 0) {
+      const lat = userGeolocation.lat
+      const lng = userGeolocation.lng
+      if (typeof lat === 'number' && typeof lng === 'number' && !isNaN(lat) && !isNaN(lng)) {
+        map.flyTo([lat, lng], 16, {
+          duration: 1.5,
+          easeLinearity: 0.5
+        })
+      }
     }
-  }, [userGeolocation, locationPermission, hasZoomedToLocation, map])
+  }, [zoomTrigger, userGeolocation, locationPermission, map])
 
   return null
 }
@@ -142,6 +168,8 @@ const MapView = ({
   filterByAvailability = null,
   route = null,
   setRoute = null,
+  routeInfo = null,
+  setRouteInfo = null,
   searchRadius = 'all',
   onLocationSelect = null,
   liveLocation,
@@ -151,11 +179,16 @@ const MapView = ({
   confirmedLocation,
   setConfirmedLocation,
   isAdjustMode,
-  setIsAdjustMode
+  setIsAdjustMode,
+  searchedLocation,
+  zoomTrigger
 }) => {
+  const [navSource, setNavSource] = useState('current') // 'current' or 'search'
+  const [isNavDropdownOpen, setIsNavDropdownOpen] = useState(false)
   // Normalize parking data to match UI expectations
   const normalizedParkingData = useMemo(() => {
-    return parkingData
+    // Start with API parking data
+    const baseData = parkingData
       .filter(area => {
         // Filter out areas with invalid or missing coordinates
         if (area.location && area.location.lat && area.location.lng) {
@@ -176,7 +209,9 @@ const MapView = ({
         // Ensure all required fields exist
         distance: area.distance || 0,
         operatingHours: area.operatingHours ? (typeof area.operatingHours === 'string' ? area.operatingHours : '24/7') : 'N/A'
-      }))
+      }));
+
+    return baseData;
   }, [parkingData, currentTime])
 
   const [userLocation, setUserLocation] = useState([21.2000, 72.8400]) // Default: Surat city center
@@ -212,6 +247,26 @@ const MapView = ({
     
     return calculateDistance(activeLocation[0], activeLocation[1], area.coordinates[0], area.coordinates[1])
   }
+
+  // Helper to format operating hours for display
+  const getOperatingHoursDisplay = (hours) => {
+    if (!hours) return '24/7';
+    if (typeof hours === 'string') return hours;
+    if (typeof hours === 'object') {
+      const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+      const currentDay = days[new Date().getDay() === 0 ? 6 : new Date().getDay() - 1]; // Correct for Sunday being 0
+      
+      if (hours[currentDay]) {
+        // If it's an array of slots
+        if (Array.isArray(hours[currentDay])) {
+          return hours[currentDay].map(slot => `${slot.open}-${slot.close}`).join(', ') || 'Closed';
+        }
+        return 'Daily hours available';
+      }
+      return '24/7';
+    }
+    return '24/7';
+  };
 
   // Update selected area when active location changes to recalculate distance
   useEffect(() => {
@@ -372,18 +427,30 @@ const MapView = ({
       const data = await response.json()
       
       if (data.routes && data.routes.length > 0) {
+        const route = data.routes[0]
         // Convert GeoJSON coordinates to Leaflet format
-        const routeCoords = data.routes[0].geometry.coordinates.map(
+        const routeCoords = route.geometry.coordinates.map(
           coord => [coord[1], coord[0]] // Flip lat/lng for Leaflet
         )
+        
+        // Update route info if callback provided
+        if (setRouteInfo) {
+          setRouteInfo({
+            distance: route.distance, // meters
+            duration: route.duration // seconds
+          })
+        }
+        
         return routeCoords
       }
       
       // Fallback to straight line if routing fails
+      if (setRouteInfo) setRouteInfo(null)
       return [start, end]
     } catch (error) {
       console.error('Routing error:', error)
       // Fallback to straight line
+      if (setRouteInfo) setRouteInfo(null)
       return [start, end]
     }
   }
@@ -428,7 +495,141 @@ const MapView = ({
     }
   }
 
-  const createCustomIcon = (status, isSelected = false, isFavoriteSpot = false) => {
+  const createCustomIcon = (status, isSelected = false, isFavoriteSpot = false, isSearchResult = false) => {
+    // Handle search results with a red pin
+    if (status === 'search' || isSearchResult) {
+      return L.divIcon({
+        html: `
+          <div style="
+            position: relative;
+            width: 38px;
+            height: 38px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: bounce 1s ease-in-out infinite alternate;
+          ">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 2C8.13 2 5 5.13 5 9C5 14.25 12 22 12 22C12 22 19 14.25 19 9C19 5.13 15.87 2 12 2Z" fill="#EF4444" stroke="white" stroke-width="2"/>
+              <circle cx="12" cy="9" r="3" fill="white"/>
+            </svg>
+            <div style="
+              position: absolute;
+              bottom: -4px;
+              width: 12px;
+              height: 4px;
+              background: rgba(0,0,0,0.2);
+              border-radius: 50%;
+              filter: blur(1px);
+              z-index: -1;
+            "></div>
+          </div>
+          <style>
+            @keyframes bounce {
+              from { transform: translateY(0px); }
+              to { transform: translateY(-5px); }
+            }
+          </style>
+        `,
+        className: 'search-marker',
+        iconSize: [38, 38],
+        iconAnchor: [19, 34],
+      })
+    }
+
+    // Handle special marker types for route start/end
+    if (status === 'start') {
+      return L.divIcon({
+        html: `
+          <div style="
+            background-color: #10b981;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 3px solid white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            cursor: pointer;
+            animation: pulse 2s infinite;
+          ">
+            <div style="
+              background-color: white;
+              width: 14px;
+              height: 14px;
+              border-radius: 50%;
+              pointer-events: none;
+              box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+            "></div>
+            <div style="
+              position: absolute;
+              bottom: -15px;
+              background-color: #10b981;
+              color: white;
+              padding: 2px 6px;
+              border-radius: 4px;
+              font-size: 10px;
+              font-weight: 800;
+              white-space: nowrap;
+              box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+              border: 1px solid white;
+            ">START</div>
+          </div>
+        `,
+        className: 'custom-marker',
+        iconSize: [32, 32],
+        iconAnchor: [16, 16]
+      })
+    }
+    
+    if (status === 'end') {
+      return L.divIcon({
+        html: `
+          <div style="
+            background-color: #ef4444;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 3px solid white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            cursor: pointer;
+            animation: pulse 2s infinite;
+          ">
+            <div style="
+              background-color: white;
+              width: 14px;
+              height: 14px;
+              border-radius: 50%;
+              pointer-events: none;
+              box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+            "></div>
+            <div style="
+              position: absolute;
+              bottom: -15px;
+              background-color: #ef4444;
+              color: white;
+              padding: 2px 6px;
+              border-radius: 4px;
+              font-size: 10px;
+              font-weight: 800;
+              white-space: nowrap;
+              box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+              border: 1px solid white;
+            ">DESTINATION</div>
+          </div>
+        `,
+        className: 'custom-marker',
+        iconSize: [32, 32],
+        iconAnchor: [16, 16]
+      })
+    }
+    
     const color = getStatusColor(status)
     return L.divIcon({
       html: `
@@ -636,8 +837,14 @@ const MapView = ({
         zoom={13}
         style={{ height: '100%', width: '100%' }}
       >
-        <MapController selectedArea={selectedArea} route={route} userGeolocation={userGeolocation} locationPermission={locationPermission} />
-        <FixedPinController 
+          <MapController 
+            selectedArea={selectedArea} 
+            route={route} 
+            userGeolocation={userGeolocation}
+            locationPermission={locationPermission}
+            zoomTrigger={zoomTrigger}
+          />
+ <FixedPinController 
           tempLocation={tempLocation}
           isAdjustMode={isAdjustMode}
           onMapCenterChange={handleMapCenterChange} 
@@ -654,15 +861,22 @@ const MapView = ({
             position={getActiveLocation()}
             icon={createUserIcon()}
           >
-            <Popup>
-              <div className="text-xs sm:text-sm max-w-[200px] sm:max-w-xs p-1 sm:p-2">
-                <div className="font-semibold text-gray-900 mb-1 text-sm sm:text-base">
-                  {confirmedLocation ? 'Overridden Location' : 'Your Current Location'}
+            <Popup className="premium-popup">
+              <div className="p-3 min-w-[180px] bg-white rounded-2xl shadow-xl border border-gray-100">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(59,130,246,0.6)]"></div>
+                  <h3 className="font-bold text-gray-900 text-sm">
+                    {confirmedLocation ? 'Manual Location' : 'Your Location'}
+                  </h3>
                 </div>
-                <div className="text-xs text-gray-500">
-                  Lat: {getActiveLocation()[0].toFixed(4)}, Lng: {getActiveLocation()[1].toFixed(4)}
-                  <br />
-                  {confirmedLocation ? 'Manually selected location' : 'Actual GPS position'}
+                <div className="text-[11px] text-gray-500 leading-relaxed">
+                  <p className="font-medium text-gray-400 mb-1">
+                    {confirmedLocation ? 'Manually selected on map' : 'Determined by GPS/Network'}
+                  </p>
+                  <p className="flex items-center gap-1">
+                    <span className="text-gray-300">Lat:</span> {getActiveLocation()[0].toFixed(4)} 
+                    <span className="text-gray-300 ml-1">Lng:</span> {getActiveLocation()[1].toFixed(4)}
+                  </p>
                 </div>
               </div>
             </Popup>
@@ -684,18 +898,75 @@ const MapView = ({
         )}
 
         {/* Route Line */}
-        {route && (
-          <Polyline
-            positions={route}
-            pathOptions={{
-              color: '#3b82f6',
-              weight: 4,
-              opacity: 0.8,
-            }}
-          />
+        {route && route.length > 0 && (
+          <>
+            <Polyline
+              positions={route}
+              pathOptions={{
+                color: '#3b82f6',
+                weight: 6,
+                opacity: 0.9,
+                lineJoin: 'round',
+                lineCap: 'round',
+                shadowColor: '#1e40af',
+                shadowBlur: 5,
+                shadowOffset: [1, 1]
+              }}
+            />
+            {/* Route start marker (FROM) */}
+            <Marker position={route[0]} icon={createCustomIcon('start', false, false)}>
+              <Popup className="premium-popup">
+                <div className="p-3 min-w-[160px] bg-white rounded-2xl shadow-xl border border-gray-100">
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="w-2 h-2 bg-green-500 rounded-full shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
+                    <h3 className="font-bold text-gray-900 text-sm">Start Point</h3>
+                  </div>
+                  <p className="text-[11px] text-gray-500 font-medium">Your route origin</p>
+                </div>
+              </Popup>
+            </Marker>
+            {/* Route end marker (TO) */}
+            <Marker position={route[route.length - 1]} icon={createCustomIcon('end', false, false)}>
+              {/* Specific destination marker remains but popup shifted to main markers */}
+            </Marker>
+          </>
         )}
 
-        {/* Parking Locations */}
+        {/* Searched Location Pin (Persistent Red Pin) and Radius Zone */}
+        {searchedLocation && (
+          <>
+            <Marker 
+              position={[searchedLocation.lat, searchedLocation.lng]} 
+              icon={createCustomIcon('search', false, false, true)}
+            >
+              <Popup className="premium-popup">
+                <div className="p-3 min-w-[160px] bg-white rounded-2xl shadow-xl border border-gray-100">
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="w-2 h-2 bg-red-500 rounded-full shadow-[0_0_8px_rgba(239,68,68,0.6)]"></div>
+                    <h3 className="font-bold text-gray-900 text-sm">{searchedLocation.name}</h3>
+                  </div>
+                  <p className="text-[11px] text-gray-500 font-medium">Your searched origin</p>
+                </div>
+              </Popup>
+            </Marker>
+            
+            {/* Show blue zone around searched location if a radius is selected */}
+            {searchRadius && searchRadius !== 'all' && (
+              <Circle
+                center={[searchedLocation.lat, searchedLocation.lng]}
+                radius={parseInt(searchRadius)}
+                pathOptions={{
+                  color: '#3b82f6',
+                  fillColor: '#3b82f6',
+                  fillOpacity: 0.15,
+                  weight: 2,
+                  dashArray: '5, 10'
+                }}
+              />
+            )}
+          </>
+        )}
+
         {parkingWithDistance
           .filter(area => {
             // Category filter - map API category to UI filter
@@ -742,85 +1013,152 @@ const MapView = ({
               <Marker
                 key={area.id}
                 position={area.coordinates}
-                icon={createCustomIcon(area.status, selectedArea?.id === area.id, isFavorite(area.id))}
+                icon={createCustomIcon(area.status, selectedArea?.id === area.id, isFavorite(area.id), area.isSearchResult)}
                 ref={(ref) => {
                   if (ref) {
                     markerRefs.current[area.id] = ref;
                   }
                 }}
-                onclick={() => {
-                  console.log('Marker onclick triggered');
-                  // Only select the area to show popup, don't show route automatically
-                  setSelectedArea(area);
-                }}
                 eventHandlers={{
                   click: (e) => {
-                    console.log('Marker eventHandlers click triggered');
-                    // Only select the area to show popup, don't show route automatically
-                    setSelectedArea(area);
+                    handleParkingClick(area);
                   }
                 }}
               >
-            <Popup>
-              <div className="text-xs max-w-[160px] sm:max-w-[200px] p-1 sm:p-2">
-                <div className="font-semibold text-gray-900 mb-1 text-xs sm:text-sm">{area.name}</div>
-                <div className="text-xs text-gray-500 mb-1 sm:mb-2">{area.category} • {formatDistance(getDistanceFromActiveLocation(area))}</div>
+                <Popup className="premium-popup">
+                  <div className="p-3 min-w-[200px] max-w-[240px]">
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="font-bold text-gray-900 text-sm leading-tight flex-1 pr-2">
+                        {area.name}
+                      </h3>
+                    </div>
 
-                <div className={`inline-block px-1 py-0.5 rounded-full text-xs font-medium mb-1 sm:mb-2 ${
-                  area.status === 'available' ? 'bg-green-100 text-green-800' :
-                  area.status === 'limited' ? 'bg-yellow-100 text-yellow-800' :
-                  'bg-red-100 text-red-800'
-                }`}>
-                  {area.status === 'available' ? 'LIKELY AVAILABLE' :
-                   area.status === 'limited' ? 'LIMITED / BUSY' :
-                   'AVOID RIGHT NOW'}
-                </div>
+                    <div className="flex items-center gap-1.5 text-[10px] text-gray-500 mb-2">
+                      <span className="font-medium text-gray-400 capitalize">{area.category || 'parking'} •</span>
+                      <div className="flex items-center gap-0.5 text-blue-500 font-bold">
+                        {selectedArea?.id === area.id && routeInfo?.distance 
+                          ? formatDistance(routeInfo.distance / 1000) 
+                          : 'Navigate for distance'}
+                      </div>
+                    </div>
 
-                {area.description && (
-                  <p className="text-gray-600 text-xs mb-1 sm:mb-2 line-clamp-2">{area.description}</p>
-                )}
+                    <div className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-black tracking-wide mb-3 ${
+                      area.status === 'available' ? 'bg-green-100 text-green-700' :
+                      area.status === 'limited' ? 'bg-yellow-100 text-yellow-700' :
+                      'bg-red-50 text-red-600'
+                    }`}>
+                      {area.status === 'available' ? 'LIKELY AVAILABLE' :
+                       area.status === 'limited' ? 'LIMITED / BUSY' :
+                       'AVOID RIGHT NOW'}
+                    </div>
 
-                <div className="space-y-1 mb-2 sm:mb-3">
-                  <div className="flex items-center gap-1 text-xs text-gray-600">
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    {area.operatingHours || '24/7'}
+                    {area.description && (
+                      <p className="text-gray-600 text-[11px] mb-2 line-clamp-2 leading-relaxed">
+                        {area.description}
+                      </p>
+                    )}
+
+                    {/* Navigation Source Selection */}
+                    <div className="mb-3">
+                      <label className="block text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1">
+                        Navigate From:
+                      </label>
+                      <div className="nav-source-selector">
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setIsNavDropdownOpen(!isNavDropdownOpen);
+                          }}
+                          className={`nav-source-trigger ${isNavDropdownOpen ? 'active' : ''}`}
+                        >
+                          <span className="flex items-center gap-1.5">
+                            {navSource === 'current' ? '📍' : '🎯'}
+                            {navSource === 'current' ? 'Current Location' : 'Search Location'}
+                          </span>
+                          <svg className={`w-3 h-3 transition-transform ${isNavDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </button>
+
+                        {isNavDropdownOpen && (
+                          <div className="nav-source-menu">
+                            <div 
+                              className={`nav-source-option ${navSource === 'current' ? 'selected' : ''}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setNavSource('current');
+                                setIsNavDropdownOpen(false);
+                              }}
+                            >
+                              📍 Current Location
+                            </div>
+                            {searchedLocation && (
+                              <div 
+                                className={`nav-source-option ${navSource === 'search' ? 'selected' : ''}`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setNavSource('search');
+                                  setIsNavDropdownOpen(false);
+                                }}
+                              >
+                                🎯 Search Location
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 text-[10px] text-gray-400 font-semibold mb-4">
+                      <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      {getOperatingHoursDisplay(area.operatingHours)}
+                    </div>
+
+                    <div className="flex gap-2 pt-2 border-t border-gray-50">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          let originCoords = null;
+                          
+                          if (navSource === 'current') {
+                            originCoords = getActiveLocation();
+                          } else if (navSource === 'search' && searchedLocation) {
+                            originCoords = [searchedLocation.lat, searchedLocation.lng];
+                          }
+
+                          if (originCoords && area.coordinates) {
+                            const origin = `${originCoords[0]},${originCoords[1]}`;
+                            const destination = `${area.coordinates[0]},${area.coordinates[1]}`;
+                            const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}`;
+                            window.open(googleMapsUrl, '_blank');
+                          }
+                        }}
+                        className="flex-1 bg-blue-500 text-white rounded-xl h-10 flex items-center justify-center transition-all hover:bg-blue-600 active:scale-95 shadow-md shadow-blue-100"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleFavorite(area);
+                        }}
+                        className={`flex-[2] h-10 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all active:scale-95 ${
+                          isFavorite(area.id)
+                            ? 'bg-amber-100 text-amber-700'
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                      >
+                        <span className="text-sm">{isFavorite(area.id) ? '⭐' : '☆'}</span>
+                        {isFavorite(area.id) ? 'Favorited' : 'Add to Favorites'}
+                      </button>
+                    </div>
                   </div>
-                </div>
-
-                <div className="flex gap-2">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleParkingClick(area);
-                    }}
-                    className="flex-1 px-2 py-1.5 text-xs font-medium rounded-lg transition-colors flex items-center justify-center gap-1 bg-blue-500 text-white hover:bg-blue-600"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                    </svg>
-                    <span className="hidden sm:inline">Route</span>
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleFavorite(area);
-                    }}
-                    className={`flex-1 px-2 py-1.5 text-xs font-medium rounded-lg transition-colors flex items-center justify-center gap-1 ${
-                    isFavorite(area.id)
-                      ? 'bg-yellow-500 text-white hover:bg-yellow-600'
-                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                  }`}
-                  >
-                    <span className="text-xs">{isFavorite(area.id) ? '⭐' : '☆'}</span>
-                    <span className="hidden sm:inline">{isFavorite(area.id) ? 'Favorited' : 'Add to Favorites'}</span>
-                    <span className="sm:hidden">{isFavorite(area.id) ? 'Favorited' : 'Add to Favorites'}</span>
-                  </button>
-                </div>
-              </div>
-            </Popup>
-          </Marker>
+                </Popup>
+              </Marker>
             );
           })}
       </MapContainer>
@@ -848,9 +1186,9 @@ const MapView = ({
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-b-[10px] transform rotate-45 border-red-500"></div>
+            <div className="w-4 h-4 rounded-full border-2 border-[#3b82f6] border-dashed bg-[#3b82f6]/20 flex-shrink-0"></div>
             <span className="text-xs text-gray-600">
-              Selected Location (Adjust Mode)
+              Search Radius Zone
             </span>
           </div>
         </div>
@@ -970,8 +1308,88 @@ const MapView = ({
         </div>
       )}
 
+      {/* Route Info Display */}
+      {/* {route && route.length > 0 && (
+        <div className="absolute bottom-[20rem] sm:bottom-[6.5rem] left-2 sm:left-4 right-2 sm:right-auto bg-white/90 backdrop-blur-md rounded-2xl shadow-2xl p-4 sm:p-5 max-w-sm z-[1000] w-72 border border-blue-100 animate-in slide-in-from-left duration-300">
+          <div className="flex items-start justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
+                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="font-bold text-gray-900 text-sm">Navigation Route</h3>
+                <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Fastest Path</p>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                setRoute(null)
+                if (setRouteInfo) setRouteInfo(null)
+              }}
+              className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-1.5 rounded-lg transition-all"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 mb-5">
+            <div className="bg-blue-50/50 rounded-xl p-3 border border-blue-100/50">
+              <p className="text-[10px] text-blue-600 font-bold uppercase mb-1">Distance</p>
+              <p className="text-xl font-black text-gray-900">
+                {routeInfo?.distance ? (routeInfo.distance / 1000).toFixed(1) : '---'} <span className="text-xs font-normal text-gray-500 uppercase">km</span>
+              </p>
+            </div>
+            <div className="bg-indigo-50/50 rounded-xl p-3 border border-indigo-100/50">
+              <p className="text-[10px] text-indigo-600 font-bold uppercase mb-1">Duration</p>
+              <p className="text-xl font-black text-gray-900">
+                {routeInfo?.duration ? Math.round(routeInfo.duration / 60) : '---'} <span className="text-xs font-normal text-gray-500 uppercase">min</span>
+              </p>
+            </div> 
+          </div> 
+
+           <div className="space-y-3 mb-5">
+            <div className="flex items-center gap-3">
+              <div className="w-2 h-2 bg-green-500 rounded-full shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
+              <span className="text-xs font-medium text-gray-700">From Your Location</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="w-2 h-2 bg-red-500 rounded-full shadow-[0_0_8px_rgba(239,68,68,0.6)]"></div>
+              <span className="text-xs font-medium text-gray-700">To {selectedArea?.name || 'Destination'}</span>
+            </div>
+          </div> 
+
+          <div className="flex gap-2">
+            <button
+              onClick={() => {
+                setRoute(null)
+                setSelectedArea(null)
+                if (setRouteInfo) setRouteInfo(null)
+              }}
+              className="flex-1 bg-gray-100 text-gray-600 px-4 py-2.5 rounded-xl text-xs font-bold hover:bg-gray-200 transition-all active:scale-95"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => {
+                if (route && route.length > 0 && mapRef.current) {
+                  const bounds = L.latLngBounds(route)
+                  mapRef.current.fitBounds(bounds, { padding: [50, 50] })
+                }
+              }}
+              className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2.5 rounded-xl text-xs font-bold shadow-lg shadow-blue-200 hover:shadow-xl hover:from-blue-700 hover:to-indigo-700 transition-all active:scale-95"
+            >
+              Re-center
+            </button>
+          </div>
+        </div>
+      )} */}
+
       {/* Selected Area Info */}
-      {/* {selectedArea && !selectedArea.isCurrentLocation && (
+      {/* {selectedArea && !route && (
         <div className="absolute bottom-[7.5rem] sm:bottom-[6.5rem] left-2 sm:left-4 right-2 sm:right-auto bg-white rounded-lg shadow-lg p-3 sm:p-4 max-w-sm z-[1000] w-64">
           <div className="flex items-start justify-between mb-1 sm:mb-2">
             <h3 className="font-semibold text-gray-900 text-xs sm:text-sm pr-2">{selectedArea.name}</h3>
