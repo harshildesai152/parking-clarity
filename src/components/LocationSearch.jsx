@@ -129,84 +129,65 @@ const LocationSearch = ({ isOpen, onClose, onLocationSelect }) => {
 
     setIsSearchingFrom(true)
     
-    // Try different APIs in order of preference
-    const apis = [
-      {
-        name: 'Photon',
-        url: `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=5`,
-        transform: (data) => data.features?.map(item => ({
-          id: `photon_${item.properties?.osm_id || Math.random()}`,
-          name: item.properties?.name || item.properties?.city || item.properties?.country || 'Location',
-          type: item.properties?.osm_type || 'location',
-          location: `${item.properties?.name || ''}, ${item.properties?.city || ''}, ${item.properties?.country || ''}`.replace(/^, |, $/g, ''),
-          lat: item.geometry?.coordinates?.[1],
-          lng: item.geometry?.coordinates?.[0],
-          hasLocation: !!(item.geometry?.coordinates?.[1] && item.geometry?.coordinates?.[0])
-        })) || []
-      },
-      {
-        name: 'MapTiler',
-        url: `https://api.maptiler.com/geocoding/${encodeURIComponent(query)}.json?key=YOUR_MAPTILER_KEY`,
-        transform: (data) => data.features?.map(item => ({
-          id: `maptiler_${item.id}`,
-          name: item.place_name?.split(',')[0] || item.text,
-          type: item.place_type?.[0] || 'location',
-          location: item.place_name || item.text,
-          lat: item.center?.[1],
-          lng: item.center?.[0],
-          hasLocation: !!(item.center?.[1] && item.center?.[0])
-        })) || []
-      },
-      {
-        name: 'OpenCage',
-        url: `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(query)}&key=YOUR_OPENCAGE_KEY&limit=5`,
-        transform: (data) => data.results?.map(item => ({
-          id: `opencage_${item.confidence}_${item.timestamp}`,
-          name: item.components?.road || item.formatted?.split(',')[0] || 'Location',
-          type: item.components?.category || 'location',
-          location: item.formatted,
-          lat: item.geometry?.lat,
-          lng: item.geometry?.lng,
-          hasLocation: !!(item.geometry?.lat && item.geometry?.lng)
-        })) || []
-      }
-    ]
+    try {
+      // Try different APIs in order of preference
+      const apis = [
+        {
+          name: 'Photon',
+          url: `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=5`,
+          transform: (data) => data.features?.map(item => ({
+            id: `photon_${item.properties?.osm_id || Math.random()}`,
+            name: item.properties?.name || item.properties?.city || item.properties?.country || 'Location',
+            type: item.properties?.osm_type || 'location',
+            location: `${item.properties?.name || ''}, ${item.properties?.city || ''}, ${item.properties?.country || ''}`.replace(/^, |, $/g, ''),
+            lat: item.geometry?.coordinates?.[1],
+            lng: item.geometry?.coordinates?.[0],
+            hasLocation: !!(item.geometry?.coordinates?.[1] && item.geometry?.coordinates?.[0])
+          })) || []
+        },
+        {
+          name: 'OpenCage',
+          url: `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(query)}&key=YOUR_OPENCAGE_KEY&limit=5`,
+          transform: (data) => data.results?.map(item => ({
+            id: `opencage_${item.confidence}_${item.timestamp}`,
+            name: item.components?.road || item.formatted?.split(',')[0] || 'Location',
+            type: item.components?.category || 'location',
+            location: item.formatted,
+            lat: item.geometry?.lat,
+            lng: item.geometry?.lng,
+            hasLocation: !!(item.geometry?.lat && item.geometry?.lng)
+          })) || []
+        }
+      ]
 
-    // Try each API until one works
-    for (const api of apis) {
-      try {
-        console.log(`Trying ${api.name} API...`)
-        
-        // Skip APIs that need keys for now, use fallback directly
-        if (api.url.includes('YOUR_')) {
-          throw new Error('API key required')
+      // Try each API until one works
+      for (const api of apis) {
+        try {
+          if (api.url.includes('YOUR_')) continue;
+          
+          const response = await fetch(api.url)
+          if (!response.ok) continue;
+          
+          const data = await response.json()
+          const transformedResults = api.transform(data)
+          
+          if (transformedResults.length > 0) {
+            setFromResults(transformedResults)
+            return
+          }
+        } catch (error) {
+          continue
         }
-        
-        const response = await fetch(api.url)
-        
-        if (!response.ok) {
-          throw new Error(`${api.name} API failed: ${response.status}`)
-        }
-        
-        const data = await response.json()
-        const transformedResults = api.transform(data)
-        
-        if (transformedResults.length > 0) {
-          setFromResults(transformedResults)
-          return
-        }
-      } catch (error) {
-        console.log(`${api.name} API failed:`, error.message)
-        continue
       }
+
+      // If all APIs fail, use fallback data
+      const fallbackResults = getFallbackLocationResults(query)
+      setFromResults(fallbackResults)
+    } catch (error) {
+      console.error('Search error:', error)
+    } finally {
+      setIsSearchingFrom(false)
     }
-
-    // If all APIs fail, use fallback data
-    console.log('All APIs failed, using fallback data')
-    const fallbackResults = getFallbackLocationResults(query)
-    setFromResults(fallbackResults)
-    
-    setIsSearchingFrom(false)
   }
 
   // Fallback location results for common searches
@@ -273,6 +254,11 @@ const LocationSearch = ({ isOpen, onClose, onLocationSelect }) => {
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       if (fromQuery && fromQuery !== 'My Current Location' && fromQuery !== 'Current Location (Unknown)') {
+        // Don't re-search if this query was just set from a selection
+        if (selectedFrom && fromQuery === selectedFrom.name) {
+          return
+        }
+        
         // Only search if query is at least 2 characters long to reduce API calls
         if (fromQuery.trim().length >= 2) {
           searchFromLocations(fromQuery)
@@ -282,7 +268,7 @@ const LocationSearch = ({ isOpen, onClose, onLocationSelect }) => {
       } else {
         setFromResults([])
       }
-    }, 800) // Increased debounce time to 800ms to reduce API calls
+    }, 800)
 
     return () => clearTimeout(timeoutId)
   }, [fromQuery])
@@ -358,7 +344,7 @@ const LocationSearch = ({ isOpen, onClose, onLocationSelect }) => {
             </div>
             <input
               type="text"
-              placeholder="From: Current location or search..."
+              placeholder="Current location or search..."
               value={fromQuery}
               onChange={(e) => setFromQuery(e.target.value)}
               className="w-full px-4 py-3 pl-10 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
