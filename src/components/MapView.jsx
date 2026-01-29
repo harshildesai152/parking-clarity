@@ -1148,7 +1148,7 @@ const MapView = ({
 
       {/* Map Legend */}
       <div className="absolute top-20 right-2 sm:right-4 bg-white rounded-lg shadow-lg p-2 sm:p-3 z-[1000] max-w-[160px] sm:max-w-none">
-        <h3 className="text-xs sm:text-sm font-semibold text-gray-900 mb-2">Legend</h3>
+        <h3 className="text-xs sm:text-sm font-semibold text-gray-900 mb-2">Legend (click and show route)</h3>
         <div className="space-y-1 sm:space-y-2">
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 bg-green-500 rounded-full border-2 border-white shadow-sm flex-shrink-0"></div>
