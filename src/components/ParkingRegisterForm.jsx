@@ -34,7 +34,8 @@ const ParkingRegisterForm = ({ isOpen, onClose, onSuccess }) => {
     parkingType: 'paid',
     minDuration: '',
     category: 'office',
-    location: { lat: '', lng: '' }
+    location: { lat: '', lng: '' },
+    vehicleType: 'car'
   });
 
   const [operatingHours, setOperatingHours] = useState({
@@ -120,6 +121,7 @@ const ParkingRegisterForm = ({ isOpen, onClose, onSuccess }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
+          vehicleTypes: [formData.vehicleType],
           operatingHours: formattedOperatingHours
         })
       });
@@ -211,6 +213,22 @@ const ParkingRegisterForm = ({ isOpen, onClose, onSuccess }) => {
                     className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 transition-all outline-none"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Vehicle Type</label>
+                <select
+                  name="vehicleType"
+                  value={formData.vehicleType}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 transition-all outline-none"
+                >
+                  <option value="car">Car</option>
+                  <option value="motorcycle">Motorcycle</option>
+                  <option value="bicycle">Bicycle</option>
+                  <option value="truck">Truck</option>
+                  <option value="ev">EV</option>
+                </select>
               </div>
             </div>
 

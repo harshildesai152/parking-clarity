@@ -27,7 +27,7 @@ const parkingSchema = new mongoose.Schema({
   },
   vehicleTypes: [{
     type: String,
-    enum: ['car', 'bike', 'truck', 'bus']
+    enum: ['car', 'motorcycle', 'bicycle', 'truck', 'ev']
   }],
   parkingType: {
     type: String,
