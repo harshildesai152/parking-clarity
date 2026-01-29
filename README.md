@@ -118,6 +118,11 @@ A modern parking discovery and management platform. Find, register, and manage p
 ## 📸 App Preview
 
 <p align="center">
+  <img src="./screenshots/Screenshot 2026-01-29 234223.png" width="400" />
+  <img src="./screenshots/Screenshot 2026-01-29 234139.png" width="400" />
+</p>
+
+<p align="center">
   <img src="./screenshots/Screenshot 2026-01-29 234126.png" width="400" />
   <img src="./screenshots/Screenshot 2026-01-29 234215.png" width="400" />
 </p>
