@@ -60,6 +60,8 @@ function App() {
     setLocationSource(source)
     if (source === 'current') {
       setZoomTrigger(prev => prev + 1)
+    } else if (source === 'search' && searchedLocation) {
+      setZoomTrigger(prev => prev + 1)
     }
   }
 

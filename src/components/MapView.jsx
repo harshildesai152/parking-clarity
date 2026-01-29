@@ -18,7 +18,18 @@ L.Icon.Default.mergeOptions({
 })
 
 // MapController component to handle map interactions
-const MapController = ({ selectedArea, route, userGeolocation, locationPermission, zoomTrigger }) => {
+const MapController = ({ 
+  selectedArea, 
+  route, 
+  userGeolocation, 
+  locationPermission, 
+  zoomTrigger, 
+  confirmedLocation, 
+  liveLocation,
+  locationSource,
+  searchedLocation,
+  searchRadius
+}) => {
   const map = useMap()
   const [hasZoomedToLocation, setHasZoomedToLocation] = useState(false)
 
@@ -81,19 +92,67 @@ const MapController = ({ selectedArea, route, userGeolocation, locationPermissio
   }, [selectedArea, route, map])
 
 
-  // Zoom to live location when zoomTrigger changes (triggered from dropdown)
+  // Zoom to location when zoomTrigger changes (triggered from dropdown)
   useEffect(() => {
-    if (userGeolocation && locationPermission === 'granted' && zoomTrigger > 0) {
-      const lat = userGeolocation.lat
-      const lng = userGeolocation.lng
-      if (typeof lat === 'number' && typeof lng === 'number' && !isNaN(lat) && !isNaN(lng)) {
-        map.flyTo([lat, lng], 16, {
+    if (zoomTrigger > 0) {
+      let targetCoords = null;
+      let zoomLevel = 16;
+
+      if (locationSource === 'search' && searchedLocation) {
+        // Zoom to previously searched location
+        targetCoords = [searchedLocation.lat, searchedLocation.lng];
+      } else if (locationSource === 'current') {
+        // Determine the best target coordinates for "Current Location"
+        if (confirmedLocation && Array.isArray(confirmedLocation) && confirmedLocation.length === 2) {
+          targetCoords = confirmedLocation;
+        } else if (liveLocation && Array.isArray(liveLocation) && liveLocation.length === 2) {
+          targetCoords = liveLocation;
+        } else if (userGeolocation && locationPermission === 'granted') {
+          targetCoords = [userGeolocation.lat, userGeolocation.lng];
+        }
+      }
+
+      if (targetCoords && typeof targetCoords[0] === 'number' && typeof targetCoords[1] === 'number' && !isNaN(targetCoords[0]) && !isNaN(targetCoords[1])) {
+        map.flyTo(targetCoords, zoomLevel, {
           duration: 1.5,
           easeLinearity: 0.5
         })
       }
     }
-  }, [zoomTrigger, userGeolocation, locationPermission, map])
+  }, [zoomTrigger, userGeolocation, locationPermission, map, confirmedLocation, liveLocation, locationSource, searchedLocation])
+
+  // Auto-zoom to fit search radius
+  useEffect(() => {
+    if (searchRadius && searchRadius !== 'all') {
+      const radiusInMeters = parseInt(searchRadius);
+      let targetCoords = null;
+
+      if (locationSource === 'search' && searchedLocation) {
+        targetCoords = [searchedLocation.lat, searchedLocation.lng];
+      } else if (locationSource === 'current') {
+        if (confirmedLocation && Array.isArray(confirmedLocation) && confirmedLocation.length === 2) {
+          targetCoords = confirmedLocation;
+        } else if (liveLocation && Array.isArray(liveLocation) && liveLocation.length === 2) {
+          targetCoords = liveLocation;
+        } else if (userGeolocation && locationPermission === 'granted') {
+          targetCoords = [userGeolocation.lat, userGeolocation.lng];
+        }
+      }
+
+      if (targetCoords && typeof targetCoords[0] === 'number' && typeof targetCoords[1] === 'number' && !isNaN(targetCoords[0]) && !isNaN(targetCoords[1])) {
+        const centerLatLng = L.latLng(targetCoords[0], targetCoords[1]);
+        // Get bounds for the radius (side length of bounding box is 2 * radius)
+        const bounds = centerLatLng.toBounds(radiusInMeters * 2);
+        
+        map.fitBounds(bounds, {
+          padding: [30, 30],
+          maxZoom: radiusInMeters <= 1000 ? 15 : (radiusInMeters <= 2000 ? 14 : (radiusInMeters <= 5000 ? 13 : 11)),
+          animate: true,
+          duration: 1.5
+        });
+      }
+    }
+  }, [searchRadius, locationSource, searchedLocation, map, confirmedLocation, liveLocation, userGeolocation, locationPermission])
 
   return null
 }
@@ -846,6 +905,11 @@ const MapView = ({
             userGeolocation={userGeolocation}
             locationPermission={locationPermission}
             zoomTrigger={zoomTrigger}
+            confirmedLocation={confirmedLocation}
+            liveLocation={liveLocation}
+            locationSource={locationSource}
+            searchedLocation={searchedLocation}
+            searchRadius={searchRadius}
           />
  <FixedPinController 
           tempLocation={tempLocation}
@@ -937,50 +1001,33 @@ const MapView = ({
 
         {/* Searched Location Pin (Persistent Red Pin) and Radius Zone */}
         {searchedLocation && (
-          <>
-            <Marker 
-              position={[searchedLocation.lat, searchedLocation.lng]} 
-              icon={createCustomIcon('search', false, false, true)}
-            >
-              <Popup className="premium-popup">
-                <div className="p-3 min-w-[160px] bg-white rounded-2xl shadow-xl border border-gray-100">
-                  <div className="flex items-center gap-2 mb-1">
-                    <div className="w-2 h-2 bg-red-500 rounded-full shadow-[0_0_8px_rgba(239,68,68,0.6)]"></div>
-                    <h3 className="font-bold text-gray-900 text-sm">{searchedLocation.name}</h3>
-                  </div>
-                  <p className="text-[11px] text-gray-500 font-medium">Your searched origin</p>
+          <Marker 
+            position={[searchedLocation.lat, searchedLocation.lng]} 
+            icon={createCustomIcon('search', false, false, true)}
+          >
+            <Popup className="premium-popup">
+              <div className="p-3 min-w-[160px] bg-white rounded-2xl shadow-xl border border-gray-100">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="w-2 h-2 bg-red-500 rounded-full shadow-[0_0_8px_rgba(239,68,68,0.6)]"></div>
+                  <h3 className="font-bold text-gray-900 text-sm">{searchedLocation.name}</h3>
                 </div>
-              </Popup>
-            </Marker>
-            
-            {/* Show blue zone around searched location or current location if a radius is selected */}
-            {searchRadius && searchRadius !== 'all' && (
-              <Circle
-                center={locationSource === 'search' ? [searchedLocation.lat, searchedLocation.lng] : getActiveLocation()}
-                radius={parseInt(searchRadius)}
-                pathOptions={{
-                  color: '#3b82f6',
-                  fillColor: '#3b82f6',
-                  fillOpacity: 0.15,
-                  weight: 2,
-                  dashArray: '5, 10'
-                }}
-              />
-            )}
-          </>
+                <p className="text-[11px] text-gray-500 font-medium">Your searched origin</p>
+              </div>
+            </Popup>
+          </Marker>
         )}
 
-        {/* Show blue zone for current location when source is 'current' */}
-        {locationSource === 'current' && searchRadius && searchRadius !== 'all' && (
+        {/* Search radius circle - Display based on locationSource */}
+        {searchRadius && searchRadius !== 'all' && (
           <Circle
-            center={getActiveLocation()}
+            center={locationSource === 'search' && searchedLocation ? [searchedLocation.lat, searchedLocation.lng] : getActiveLocation()}
             radius={parseInt(searchRadius)}
             pathOptions={{
               color: '#3b82f6',
               fillColor: '#3b82f6',
-              fillOpacity: 0.15,
-              weight: 2,
-              dashArray: '5, 10'
+              fillOpacity: 0.2, // Slightly more visible
+              weight: 3, // Slightly thicker
+              dashArray: '10, 10'
             }}
           />
         )}
