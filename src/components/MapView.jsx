@@ -375,10 +375,13 @@ const MapView = ({
       // Apply radius filter if not 'all'
       if (searchRadius !== 'all' && activeLocationCoords) {
         const radiusInKm = parseInt(searchRadius) / 1000;
-        results = results.filter(area => area.distance <= radiusInKm);
+        results = results.filter(area => 
+          area.distance <= radiusInKm || 
+          (selectedArea && (area.id === selectedArea.id || area._id === selectedArea.id))
+        );
       }
 
-      // Update dialog state based on calculation (check against all parking data, not filtered)
+      // Update dialog state based on calculation
       const allNearbyParking = normalizedParkingData.filter(area => {
         let areaLat, areaLng;
         if (area.coordinates && Array.isArray(area.coordinates) && area.coordinates.length === 2) {
@@ -402,7 +405,7 @@ const MapView = ({
     }
     
     return results;
-  }, [confirmedLocation, liveLocation, userLocation, normalizedParkingData, searchRadius, locationSource, searchedLocation]);
+  }, [confirmedLocation, liveLocation, userLocation, normalizedParkingData, searchRadius, locationSource, searchedLocation, selectedArea]);
   const mapRef = useRef(null)
 
   // Open popup when selectedArea changes (from list view click)
@@ -557,7 +560,7 @@ const MapView = ({
     }
   }
 
-  const createCustomIcon = (status, isSelected = false, isFavoriteSpot = false, isSearchResult = false) => {
+  const createCustomIcon = (status, isSelected = false, isFavoriteSpot = false, isSearchResult = false, label = null) => {
     // Handle search results with a red pin
     if (status === 'search' || isSearchResult) {
       return L.divIcon({
@@ -575,6 +578,22 @@ const MapView = ({
               <path d="M12 2C8.13 2 5 5.13 5 9C5 14.25 12 22 12 22C12 22 19 14.25 19 9C19 5.13 15.87 2 12 2Z" fill="#EF4444" stroke="white" stroke-width="2"/>
               <circle cx="12" cy="9" r="3" fill="white"/>
             </svg>
+            ${label ? `
+              <div style="
+                position: absolute;
+                bottom: -20px;
+                background-color: ${label === 'START' ? '#10b981' : '#ef4444'};
+                color: white;
+                padding: 2px 6px;
+                border-radius: 4px;
+                font-size: 10px;
+                font-weight: 800;
+                white-space: nowrap;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+                border: 1px solid white;
+                z-index: 10;
+              ">${label}</div>
+            ` : ''}
             <div style="
               position: absolute;
               bottom: -4px;
@@ -599,99 +618,6 @@ const MapView = ({
       })
     }
 
-    // Handle special marker types for route start/end
-    if (status === 'start') {
-      return L.divIcon({
-        html: `
-          <div style="
-            background-color: #10b981;
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            border: 3px solid white;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.4);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-            cursor: pointer;
-            animation: pulse 2s infinite;
-          ">
-            <div style="
-              background-color: white;
-              width: 14px;
-              height: 14px;
-              border-radius: 50%;
-              pointer-events: none;
-              box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
-            "></div>
-            <div style="
-              position: absolute;
-              bottom: -15px;
-              background-color: #10b981;
-              color: white;
-              padding: 2px 6px;
-              border-radius: 4px;
-              font-size: 10px;
-              font-weight: 800;
-              white-space: nowrap;
-              box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-              border: 1px solid white;
-            ">START</div>
-          </div>
-        `,
-        className: 'custom-marker',
-        iconSize: [32, 32],
-        iconAnchor: [16, 16]
-      })
-    }
-    
-    if (status === 'end') {
-      return L.divIcon({
-        html: `
-          <div style="
-            background-color: #ef4444;
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            border: 3px solid white;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.4);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-            cursor: pointer;
-            animation: pulse 2s infinite;
-          ">
-            <div style="
-              background-color: white;
-              width: 14px;
-              height: 14px;
-              border-radius: 50%;
-              pointer-events: none;
-              box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
-            "></div>
-            <div style="
-              position: absolute;
-              bottom: -15px;
-              background-color: #ef4444;
-              color: white;
-              padding: 2px 6px;
-              border-radius: 4px;
-              font-size: 10px;
-              font-weight: 800;
-              white-space: nowrap;
-              box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-              border: 1px solid white;
-            ">DESTINATION</div>
-          </div>
-        `,
-        className: 'custom-marker',
-        iconSize: [32, 32],
-        iconAnchor: [16, 16]
-      })
-    }
-    
     const color = getStatusColor(status)
     return L.divIcon({
       html: `
@@ -733,6 +659,23 @@ const MapView = ({
               pointer-events: none;
             ">⭐</div>
           ` : ''}
+          ${label ? `
+            <div style="
+              position: absolute;
+              bottom: -22px;
+              background-color: ${label === 'START' ? '#10b981' : '#ef4444'};
+              color: white;
+              padding: 2px 6px;
+              border-radius: 4px;
+              font-size: 10px;
+              font-weight: 800;
+              white-space: nowrap;
+              box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+              border: 1px solid white;
+              z-index: 10;
+              animation: ${isSelected ? 'pulse 2s infinite' : 'none'};
+            ">${label}</div>
+          ` : ''}
         </div>
         <style>
           @keyframes pulse {
@@ -754,7 +697,7 @@ const MapView = ({
     })
   }
 
-  const createUserIcon = () => {
+  const createUserIcon = (label = null) => {
     return L.divIcon({
       html: `
         <div style="
@@ -764,7 +707,28 @@ const MapView = ({
           border-radius: 50%;
           border: 3px solid white;
           box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-        "></div>
+          position: relative;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        ">
+          ${label ? `
+            <div style="
+              position: absolute;
+              bottom: -22px;
+              background-color: #10b981;
+              color: white;
+              padding: 2px 6px;
+              border-radius: 4px;
+              font-size: 10px;
+              font-weight: 800;
+              white-space: nowrap;
+              box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+              border: 1px solid white;
+              z-index: 10;
+            ">${label}</div>
+          ` : ''}
+        </div>
       `,
       className: 'user-marker',
       iconSize: [20, 20],
@@ -926,7 +890,7 @@ const MapView = ({
         {!isAdjustMode && (
           <Marker 
             position={getActiveLocation()}
-            icon={createUserIcon()}
+            icon={createUserIcon(route ? 'START' : null)}
           >
             <Popup className="premium-popup">
               <div className="p-3 min-w-[180px] bg-white rounded-2xl shadow-xl border border-gray-100">
@@ -966,44 +930,26 @@ const MapView = ({
 
         {/* Route Line */}
         {route && route.length > 0 && (
-          <>
-            <Polyline
-              positions={route}
-              pathOptions={{
-                color: '#3b82f6',
-                weight: 6,
-                opacity: 0.9,
-                lineJoin: 'round',
-                lineCap: 'round',
-                shadowColor: '#1e40af',
-                shadowBlur: 5,
-                shadowOffset: [1, 1]
-              }}
-            />
-            {/* Route start marker (FROM) */}
-            <Marker position={route[0]} icon={createCustomIcon('start', false, false)}>
-              <Popup className="premium-popup">
-                <div className="p-3 min-w-[160px] bg-white rounded-2xl shadow-xl border border-gray-100">
-                  <div className="flex items-center gap-2 mb-1">
-                    <div className="w-2 h-2 bg-green-500 rounded-full shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
-                    <h3 className="font-bold text-gray-900 text-sm">Start Point</h3>
-                  </div>
-                  <p className="text-[11px] text-gray-500 font-medium">Your route origin</p>
-                </div>
-              </Popup>
-            </Marker>
-            {/* Route end marker (TO) */}
-            <Marker position={route[route.length - 1]} icon={createCustomIcon('end', false, false)}>
-              {/* Specific destination marker remains but popup shifted to main markers */}
-            </Marker>
-          </>
+          <Polyline
+            positions={route}
+            pathOptions={{
+              color: '#3b82f6',
+              weight: 6,
+              opacity: 0.9,
+              lineJoin: 'round',
+              lineCap: 'round',
+              shadowColor: '#1e40af',
+              shadowBlur: 5,
+              shadowOffset: [1, 1]
+            }}
+          />
         )}
 
         {/* Searched Location Pin (Persistent Red Pin) and Radius Zone */}
         {searchedLocation && (
           <Marker 
             position={[searchedLocation.lat, searchedLocation.lng]} 
-            icon={createCustomIcon('search', false, false, true)}
+            icon={createCustomIcon('search', false, false, true, (route && !selectedArea) ? 'DESTINATION' : (route && !confirmedLocation) ? 'START' : null)}
           >
             <Popup className="premium-popup">
               <div className="p-3 min-w-[160px] bg-white rounded-2xl shadow-xl border border-gray-100">
@@ -1078,7 +1024,13 @@ const MapView = ({
               <Marker
                 key={area.id}
                 position={area.coordinates}
-                icon={createCustomIcon(area.status, selectedArea?.id === area.id, isFavorite(area.id), area.isSearchResult)}
+                icon={createCustomIcon(
+                  area.status, 
+                  selectedArea?.id === area.id, 
+                  isFavorite(area.id), 
+                  area.isSearchResult,
+                  (route && selectedArea?.id === area.id) ? 'DESTINATION' : null
+                )}
                 ref={(ref) => {
                   if (ref) {
                     markerRefs.current[area.id] = ref;

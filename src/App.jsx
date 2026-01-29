@@ -195,7 +195,7 @@ function App() {
   const fetchAllParkingData = async () => {
     try {
       setIsLoading(true)
-      const response = await fetch('/api/parking')
+      const response = await fetch('/api/parking?limit=1000')
       const result = await response.json()
       if (result && result.data) {
         setAllParkingData(result.data)
@@ -229,7 +229,9 @@ function App() {
       if (selectedParkingTypes.length > 0) params.append('parkingType', selectedParkingTypes.join(','))
       if (parkingDuration) params.append('minDuration', parkingDuration)
       if (filterByAvailability) params.append('available', filterByAvailability === 'available' ? 'true' : 'false')
-      if (searchRadius && searchRadius !== 'all') params.append('radius', searchRadius)
+      if (searchRadius) params.append('radius', searchRadius)
+      params.append('limit', '1000')
+      
       if (locationSource === 'search' && searchedLocation) {
         params.append('lat', searchedLocation.lat)
         params.append('lng', searchedLocation.lng)
