@@ -67,7 +67,7 @@ function App() {
 
   // Handle location selection from MapView (new system)
   const handleMapLocationSelect = (location) => {
-    console.log('Map location selected:', location);
+    // console.log('Map location selected:', location);
     
     if (location.type === 'navigation') {
       // Handle navigation from LocationSearch (FROM/TO)
@@ -296,7 +296,7 @@ function App() {
         <div className="space-y-3 mb-3">
           <div className="flex items-center justify-between gap-2 bg-gray-50 p-3 rounded-lg border border-gray-200">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold text-gray-700">Find packing spots From:</span>
+              <span className="text-sm font-semibold text-gray-700">Find parking spots Near:</span>
               <select
                 value={locationSource}
                 onChange={(e) => handleLocationSourceChange(e.target.value)}
@@ -334,7 +334,7 @@ function App() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
                   <span className="text-sm font-medium">
-                    {mapSearchText || 'Search for parking, places...'}
+                    {mapSearchText || 'Search for parking spots Near'}
                   </span>
                 </div>
               </button>
