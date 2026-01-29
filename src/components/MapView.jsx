@@ -181,7 +181,8 @@ const MapView = ({
   isAdjustMode,
   setIsAdjustMode,
   searchedLocation,
-  zoomTrigger
+  zoomTrigger,
+  locationSource
 }) => {
   const [navSource, setNavSource] = useState('current') // 'current' or 'search'
   const [isNavDropdownOpen, setIsNavDropdownOpen] = useState(false)
@@ -280,9 +281,11 @@ const MapView = ({
   const parkingWithDistance = useMemo(() => {
     let results = normalizedParkingData;
     
-    // Use confirmedLocation (override) if available, otherwise use live location or default location
+    // Determine active location base on locationSource
     let activeLocationCoords;
-    if (confirmedLocation && Array.isArray(confirmedLocation) && confirmedLocation.length === 2) {
+    if (locationSource === 'search' && searchedLocation) {
+      activeLocationCoords = { lat: searchedLocation.lat, lng: searchedLocation.lng };
+    } else if (confirmedLocation && Array.isArray(confirmedLocation) && confirmedLocation.length === 2) {
       activeLocationCoords = { lat: confirmedLocation[0], lng: confirmedLocation[1] };
     } else if (liveLocation) {
       activeLocationCoords = { lat: liveLocation[0], lng: liveLocation[1] };
@@ -340,7 +343,7 @@ const MapView = ({
     }
     
     return results;
-  }, [confirmedLocation, liveLocation, userLocation, normalizedParkingData, searchRadius]);
+  }, [confirmedLocation, liveLocation, userLocation, normalizedParkingData, searchRadius, locationSource, searchedLocation]);
   const mapRef = useRef(null)
 
   // Open popup when selectedArea changes (from list view click)
@@ -950,10 +953,10 @@ const MapView = ({
               </Popup>
             </Marker>
             
-            {/* Show blue zone around searched location if a radius is selected */}
+            {/* Show blue zone around searched location or current location if a radius is selected */}
             {searchRadius && searchRadius !== 'all' && (
               <Circle
-                center={[searchedLocation.lat, searchedLocation.lng]}
+                center={locationSource === 'search' ? [searchedLocation.lat, searchedLocation.lng] : getActiveLocation()}
                 radius={parseInt(searchRadius)}
                 pathOptions={{
                   color: '#3b82f6',
@@ -965,6 +968,21 @@ const MapView = ({
               />
             )}
           </>
+        )}
+
+        {/* Show blue zone for current location when source is 'current' */}
+        {locationSource === 'current' && searchRadius && searchRadius !== 'all' && (
+          <Circle
+            center={getActiveLocation()}
+            radius={parseInt(searchRadius)}
+            pathOptions={{
+              color: '#3b82f6',
+              fillColor: '#3b82f6',
+              fillOpacity: 0.15,
+              weight: 2,
+              dashArray: '5, 10'
+            }}
+          />
         )}
 
         {parkingWithDistance

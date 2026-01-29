@@ -226,7 +226,10 @@ function App() {
       if (parkingDuration) params.append('minDuration', parkingDuration)
       if (filterByAvailability) params.append('available', filterByAvailability === 'available' ? 'true' : 'false')
       if (searchRadius && searchRadius !== 'all') params.append('radius', searchRadius)
-      if (userLocation) {
+      if (locationSource === 'search' && searchedLocation) {
+        params.append('lat', searchedLocation.lat)
+        params.append('lng', searchedLocation.lng)
+      } else if (userLocation) {
         params.append('lat', userLocation[0])
         params.append('lng', userLocation[1])
       }
@@ -914,6 +917,7 @@ function App() {
               setIsAdjustMode={setIsAdjustMode}
               searchedLocation={searchedLocation}
               zoomTrigger={zoomTrigger}
+              locationSource={locationSource}
             />
           ) : (
             <div className="w-full h-full bg-gray-50 p-4 sm:p-6 lg:p-8 overflow-y-auto">
