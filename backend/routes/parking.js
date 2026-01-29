@@ -10,7 +10,7 @@ router.get('/', async (req, res) => {
       search,
       lat,
       lng,
-      radius = 1000,
+      radius,
       category,
       vehicleType,
       parkingType,
@@ -125,8 +125,8 @@ router.get('/', async (req, res) => {
     // Start with base query
     let parkingQuery = Parking.find(query);
 
-    // Location-based query if lat/lng provided
-    if (lat && lng) {
+    // Location-based query if lat/lng provided AND radius is explicitly requested
+    if (lat && lng && radius && radius !== 'all') {
       const userLat = parseFloat(lat);
       const userLng = parseFloat(lng);
       const searchRadius = parseFloat(radius);
@@ -157,7 +157,7 @@ router.get('/', async (req, res) => {
     }
 
     // Apply limit and sort
-    parkingQuery = parkingQuery.limit(parseInt(limit));
+    parkingQuery = parkingQuery.sort({ createdAt: -1 }).limit(parseInt(limit));
 
     // Execute query
     const parkingSpots = await parkingQuery.exec();
@@ -205,6 +205,75 @@ router.get('/', async (req, res) => {
 
   } catch (error) {
     console.error('Error fetching parking spots:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// POST /api/parking - Register a new parking spot
+router.post('/', async (req, res) => {
+  try {
+    const {
+      name,
+      description,
+      location,
+      category,
+      vehicleTypes,
+      parkingType,
+      minDuration,
+      capacity,
+      pricing,
+      operatingHours,
+      amenities
+    } = req.body;
+
+    // Basic validation
+    if (!name || !location || !location.lat || !location.lng || !parkingType) {
+      return res.status(400).json({
+        message: 'Missing required fields: name, location (lat/lng), and parkingType are required.'
+      });
+    }
+
+    // Prepare nested objects with defaults if not provided to match model schema
+    const defaultCapacity = {
+      car: { total: 10, available: 10 },
+      motorcycle: { total: 10, available: 10 },
+      truck: { total: 5, available: 5 }
+    };
+
+    const newParking = new Parking({
+      name,
+      description: description || '',
+      location: {
+        lat: parseFloat(location.lat),
+        lng: parseFloat(location.lng)
+      },
+      category: category || 'office', // Default category
+      vehicleTypes: vehicleTypes || ['car', 'bike'],
+      parkingType,
+      parkingTypeInfo: parkingType.charAt(0).toUpperCase() + parkingType.slice(1),
+      minDuration: parseInt(minDuration) || 0,
+      capacity: capacity || defaultCapacity,
+      pricing: pricing || { hourly: 0, daily: 0 },
+      operatingHours: operatingHours || {
+        monday: [{ open: '00:00', close: '23:59', isOpen: true }],
+        tuesday: [{ open: '00:00', close: '23:59', isOpen: true }],
+        wednesday: [{ open: '00:00', close: '23:59', isOpen: true }],
+        thursday: [{ open: '00:00', close: '23:59', isOpen: true }],
+        friday: [{ open: '00:00', close: '23:59', isOpen: true }],
+        saturday: [{ open: '00:00', close: '23:59', isOpen: true }],
+        sunday: [{ open: '00:00', close: '23:59', isOpen: true }]
+      },
+      amenities: amenities || [],
+      isActive: true,
+      reportCount: 0,
+      reviews: []
+    });
+
+    const savedParking = await newParking.save();
+    res.status(201).json(savedParking);
+
+  } catch (error) {
+    console.error('Error registering parking spot:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
