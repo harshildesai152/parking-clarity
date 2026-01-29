@@ -177,8 +177,72 @@ export default async function handler(req, res) {
       console.error('Error fetching parking spots:', error);
       return res.status(500).json({ message: 'Server error', error: error.message });
     }
+  } else if (method === 'POST') {
+    try {
+      const {
+        name,
+        description,
+        location,
+        category,
+        vehicleTypes,
+        parkingType,
+        minDuration,
+        capacity,
+        pricing,
+        operatingHours,
+        amenities
+      } = req.body;
+
+      if (!name || !location || !location.lat || !location.lng || !parkingType) {
+        return res.status(400).json({
+          message: 'Missing required fields: name, location (lat/lng), and parkingType are required.'
+        });
+      }
+
+      const defaultCapacity = {
+        car: { total: 10, available: 10 },
+        motorcycle: { total: 10, available: 10 },
+        truck: { total: 5, available: 5 }
+      };
+
+      const newParking = new Parking({
+        name,
+        description: description || '',
+        location: {
+          lat: parseFloat(location.lat),
+          lng: parseFloat(location.lng)
+        },
+        category: category || 'office',
+        vehicleTypes: vehicleTypes || ['car', 'bike'],
+        parkingType,
+        parkingTypeInfo: parkingType.charAt(0).toUpperCase() + parkingType.slice(1),
+        minDuration: parseInt(minDuration) || 0,
+        capacity: capacity || defaultCapacity,
+        pricing: pricing || { hourly: 0, daily: 0 },
+        operatingHours: operatingHours || {
+          monday: [{ open: '00:00', close: '23:59', isOpen: true }],
+          tuesday: [{ open: '00:00', close: '23:59', isOpen: true }],
+          wednesday: [{ open: '00:00', close: '23:59', isOpen: true }],
+          thursday: [{ open: '00:00', close: '23:59', isOpen: true }],
+          friday: [{ open: '00:00', close: '23:59', isOpen: true }],
+          saturday: [{ open: '00:00', close: '23:59', isOpen: true }],
+          sunday: [{ open: '00:00', close: '23:59', isOpen: true }]
+        },
+        amenities: amenities || [],
+        isActive: true,
+        reportCount: 0,
+        reviews: []
+      });
+
+      const savedParking = await newParking.save();
+      return res.status(201).json(savedParking);
+
+    } catch (error) {
+      console.error('Error registering parking spot:', error);
+      return res.status(500).json({ message: 'Server error', error: error.message });
+    }
   } else {
-    res.setHeader('Allow', ['GET']);
+    res.setHeader('Allow', ['GET', 'POST']);
     return res.status(405).end(`Method ${method} Not Allowed`);
   }
 }
