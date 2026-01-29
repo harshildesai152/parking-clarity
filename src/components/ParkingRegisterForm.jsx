@@ -27,31 +27,39 @@ const StaticPinController = ({ onPositionChange }) => {
   return null;
 };
 
+const INITIAL_FORM_DATA = {
+  name: '',
+  description: '',
+  parkingType: 'paid',
+  minDuration: '',
+  category: 'office',
+  location: { lat: '', lng: '' },
+  vehicleType: 'car'
+};
+
+const INITIAL_OPERATING_HOURS = {
+  monday: { open: '08:00', close: '20:00', isOpen: true },
+  tuesday: { open: '08:00', close: '20:00', isOpen: true },
+  wednesday: { open: '08:00', close: '20:00', isOpen: true },
+  thursday: { open: '08:00', close: '20:00', isOpen: true },
+  friday: { open: '08:00', close: '20:00', isOpen: true },
+  saturday: { open: '09:00', close: '18:00', isOpen: true },
+  sunday: { open: '09:00', close: '18:00', isOpen: true }
+};
+
 const ParkingRegisterForm = ({ isOpen, onClose, onSuccess }) => {
-  const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    parkingType: 'paid',
-    minDuration: '',
-    category: 'office',
-    location: { lat: '', lng: '' },
-    vehicleType: 'car'
-  });
-
-  const [operatingHours, setOperatingHours] = useState({
-    monday: { open: '08:00', close: '20:00', isOpen: true },
-    tuesday: { open: '08:00', close: '20:00', isOpen: true },
-    wednesday: { open: '08:00', close: '20:00', isOpen: true },
-    thursday: { open: '08:00', close: '20:00', isOpen: true },
-    friday: { open: '08:00', close: '20:00', isOpen: true },
-    saturday: { open: '09:00', close: '18:00', isOpen: true },
-    sunday: { open: '09:00', close: '18:00', isOpen: true }
-  });
-
+  const [formData, setFormData] = useState(INITIAL_FORM_DATA);
+  const [operatingHours, setOperatingHours] = useState(INITIAL_OPERATING_HOURS);
   const [showMap, setShowMap] = useState(false);
   const [mapCenter, setMapCenter] = useState([19.0760, 72.8777]); // Default to Mumbai
   const [selectedPos, setSelectedPos] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const resetForm = () => {
+    setFormData(INITIAL_FORM_DATA);
+    setOperatingHours(INITIAL_OPERATING_HOURS);
+    setSelectedPos(null);
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -129,6 +137,7 @@ const ParkingRegisterForm = ({ isOpen, onClose, onSuccess }) => {
       if (!response.ok) throw new Error('Failed to register parking');
 
       toast.success('Parking spot registered successfully!');
+      resetForm();
       onSuccess();
       onClose();
     } catch (error) {
@@ -176,6 +185,24 @@ const ParkingRegisterForm = ({ isOpen, onClose, onSuccess }) => {
                   className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 transition-all outline-none"
                   required
                 />
+              </div>
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <label className="block text-sm font-bold text-gray-700 mb-1">Category</label>
+                  <select
+                    name="category"
+                    value={formData.category}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 transition-all outline-none"
+                  >
+                    <option value="hospital">Hospital</option>
+                    <option value="office">Office</option>
+                    <option value="transport">Transport</option>
+                    <option value="shopping">Shopping</option>
+                    <option value="shopping-mall">Shopping Mall</option>
+                    <option value="market">Market</option>
+                  </select>
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1">Description</label>

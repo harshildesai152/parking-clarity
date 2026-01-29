@@ -22,7 +22,7 @@ const parkingSchema = new mongoose.Schema({
   },
   category: {
     type: String,
-    enum: ['hospital', 'market', 'shopping-mall', 'office'],
+    enum: ['hospital', 'office', 'transport', 'shopping', 'shopping-mall', 'market'],
     required: true
   },
   vehicleTypes: [{
