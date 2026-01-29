@@ -2,6 +2,19 @@
 
 A modern parking discovery and management platform. Find, register, and manage parking spots with real-time map integration.
 
+## 📸 App Preview
+
+<p align="center">
+  <img src="./screenshots/Screenshot 2026-01-29 234126.png" width="400" />
+  <img src="./screenshots/Screenshot 2026-01-29 234215.png" width="400" />
+</p>
+
+<p align="center">
+  <img src="./screenshots/Screenshot 2026-01-29 234444.png" width="300" />
+  <img src="./screenshots/Screenshot 2026-01-29 234455.png" width="300" />
+  <img src="./screenshots/Screenshot 2026-01-29 234555.png" width="300" />
+</p>
+
 ## 📖 Overview
 
 **Parking Clarity** is a community-driven solution to urban parking challenges. It allows users to pinpoint available parking spots on a map, get real-time navigation routes, and contribute by registering new spots. By combining geolocation services with community reporting, it ensures that high-demand areas are easier to navigate.
