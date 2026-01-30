@@ -1,3 +1,5 @@
+**[🌐 Try Live App](https://parking-clarity.vercel.app/)**
+
 # 🅿️ Parking Clarity
 
 A modern parking discovery and management platform. Find, register, and manage parking spots with real-time map integration.
