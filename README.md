@@ -75,14 +75,14 @@ A modern parking discovery and management platform. Find, register, and manage p
 ### 📹 Live Demo Video
 Watch our parking application in action with a comprehensive walkthrough of all features:
 
-**[🎬 Watch Demo Video](https://drive.google.com/drive/folders/1JKrlrrPzk_QZjoBiY4OPpuDur8ms7Ex2)**
+**[🎬 Watch Demo Video](https://drive.google.com/file/d/12f05KP6U2pJoJg6uena4w9KXbequYaWO/view?usp=drive_link)**
 
 *See the complete user journey from location search to parking spot discovery, route planning, and community reporting.*
 
 ### 📚 Project Documentation
 Access detailed technical documentation, API references, and implementation guides:
 
-**[📖 View Documentation](https://drive.google.com/drive/folders/1JKrlrrPzk_QZjoBiY4OPpuDur8ms7Ex2)**
+**[📖 View Documentation](https://drive.google.com/file/d/1ZCRRIPZKahdoFJew0yV629Rsuu1AtCyy/view?usp=drive_link)**
 
 *Includes technical specifications, database schemas, API endpoints, and deployment instructions.*
 
