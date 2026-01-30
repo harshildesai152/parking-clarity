@@ -1,14 +1,6 @@
 # 🅿️ Parking Clarity
 
-A comprehensive parking management and discovery application designed to help users find, register, and manage parking spots efficiently. Built with React, Vite, and Tailwind CSS, featuring advanced filtering, real-time map integration, and user-friendly navigation.
-
-## 🎥 Demo Video
-
-Check out the live demonstration of Parking Clarity in action:
-
-[![Watch Demo Video](screenshots/screen-capture.webm)](screenshots/screen-capture.webm)
-
-*Click the video above to see the complete parking application workflow including search, filtering, registration, and navigation features.*
+A modern parking discovery and management platform. Find, register, and manage parking spots with real-time map integration.
 
 ## 📖 Overview
 
@@ -76,6 +68,21 @@ Check out the live demonstration of Parking Clarity in action:
    ```
 
 ---
+## 🎥 Demo Video & Documentation
+
+### 📹 Live Demo Video
+Watch our parking application in action with a comprehensive walkthrough of all features:
+
+**[🎬 Watch Demo Video](https://drive.google.com/drive/folders/1JKrlrrPzk_QZjoBiY4OPpuDur8ms7Ex2)**
+
+*See the complete user journey from location search to parking spot discovery, route planning, and community reporting.*
+
+### 📚 Project Documentation
+Access detailed technical documentation, API references, and implementation guides:
+
+**[📖 View Documentation](https://drive.google.com/drive/folders/1JKrlrrPzk_QZjoBiY4OPpuDur8ms7Ex2)**
+
+*Includes technical specifications, database schemas, API endpoints, and deployment instructions.*
 
 ## 🌟 Core Features
 
@@ -124,6 +131,17 @@ Check out the live demonstration of Parking Clarity in action:
 - **Ensures Data Accuracy**: Uses a community-reporting system with verified logins to keep parking status up to date.
 
 ## 📸 App Preview
+
+### 🔍 Location Search Intelligence
+
+**Search Location Feature**: Our intelligent location search system solves the fundamental parking discovery problem. When users need to park near a specific destination (like VR Mall) but don't know exact parking spot names, they can simply search the area name. The system then:
+
+1. **Pinpoints Destination**: Automatically locates the searched area on the map using OpenStreetMap data
+2. **Radius-Based Discovery**: Displays all available parking spots within the user's selected search radius (0.5km - 10km)
+3. **Smart Filtering**: Allows users to filter results by parking type, availability, time, and vehicle requirements
+4. **Route Optimization**: Shows precise distance and navigation from current location to selected parking
+
+This eliminates the guesswork in urban parking, transforming area-based searches into precise parking solutions.
 
 <p align="center">
   <img src="./screenshots/Screenshot 2026-01-29 234223.png" width="400" />
