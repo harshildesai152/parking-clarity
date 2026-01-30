@@ -1,6 +1,14 @@
 # 🅿️ Parking Clarity
 
-A modern parking discovery and management platform. Find, register, and manage parking spots with real-time map integration.
+A comprehensive parking management and discovery application designed to help users find, register, and manage parking spots efficiently. Built with React, Vite, and Tailwind CSS, featuring advanced filtering, real-time map integration, and user-friendly navigation.
+
+## 🎥 Demo Video
+
+Check out the live demonstration of Parking Clarity in action:
+
+[![Watch Demo Video](screenshots/screen-capture.webm)](screenshots/screen-capture.webm)
+
+*Click the video above to see the complete parking application workflow including search, filtering, registration, and navigation features.*
 
 ## 📖 Overview
 
