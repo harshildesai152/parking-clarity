@@ -86,6 +86,12 @@ Access detailed technical documentation, API references, and implementation guid
 
 *Includes technical specifications, database schemas, API endpoints, and deployment instructions.*
 
+### 🔧 System Documentation: API & Technical Specifications
+
+**[⚙️ View System Documentation](https://drive.google.com/file/d/191sYFOugYN6oiYPxMQlC-ZDb9bLgpjrB/view?usp=drive_link)**
+
+*Comprehensive API documentation, technical specifications, system architecture, and integration guides.*
+
 ## 🌟 Core Features
 
 ### 🔍 Advanced Search & Navigation
