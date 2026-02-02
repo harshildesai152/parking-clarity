@@ -8,7 +8,7 @@ module.exports = async function handler(req, res) {
   await dbConnect();
 
   let user = null;
-  const token = req.cookies?.auth_token || req.body?.token;
+  const token = (req.cookies && req.cookies.auth_token) || req.body.token;
   if (token) {
     try {
       user = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret');
