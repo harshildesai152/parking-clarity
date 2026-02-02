@@ -1,9 +1,9 @@
-import dbConnect from './db.js';
-import Report from './models/Report.js';
-import Parking from './models/Parking.js';
-import jwt from 'jsonwebtoken';
+const dbConnect = require('./db.js');
+const Report = require('./models/Report.js');
+const Parking = require('./models/Parking.js');
+const jwt = require('jsonwebtoken');
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   const { method } = req;
   await dbConnect();
 

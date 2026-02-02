@@ -1,8 +1,8 @@
-import dbConnect from '../db.js';
-import OTP from '../models/OTP.js';
-import otpService from '../utils/otpService.js';
+const dbConnect = require('../db.js');
+const OTP = require('../models/OTP.js');
+const otpService = require('../utils/otpService.js');
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', ['POST']);
     return res.status(405).end(`Method ${req.method} Not Allowed`);

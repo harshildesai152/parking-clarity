@@ -1,7 +1,7 @@
-import dbConnect from './db.js';
-import Parking from './models/Parking.js';
+const dbConnect = require('./db.js');
+const Parking = require('./models/Parking.js');
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   const { method } = req;
 
   await dbConnect();
